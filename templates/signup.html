@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Up - MeetingMind{% endblock %}
+
+{% block extra_css %}
+<style>
+body {
+    background-color: #F8F9FA; /* Light mode for the signup page specifically */
+}
+
+.signup-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.neon-split-card {
+    width: 100%;
+    max-width: 850px;
+    min-height: 500px;
+    background: linear-gradient(110deg, #0D6EFD 45%, #FFFFFF 45.1%);
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(13, 110, 253, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(13, 110, 253, 0.2);
+    display: flex;
+    overflow: hidden;
+    position: relative;
+}
+
+.split-left {
+    flex: 1.1;
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+}
+
+.split-right {
+    flex: 1;
+    padding: 50px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.neon-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+/* Custom form inputs */
+.line-input-group {
+    position: relative;
+    margin-bottom: 30px;
+}
+.line-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    color: #212529;
+    padding: 10px 30px 10px 0;
+    font-size: 0.9rem;
+    transition: border-color 0.3s;
+}
+.line-input:focus {
+    outline: none;
+    border-bottom: 1px solid #0D6EFD;
+}
+.line-input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+.input-icon-right {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6C757D;
+    width: 14px;
+}
+
+.btn-neon-blue {
+    background: linear-gradient(90deg, #0D6EFD, #0B5ED7);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 12px;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    transition: all 0.3s;
+}
+.btn-neon-blue:hover {
+    box-shadow: 0 4px 25px rgba(13, 110, 253, 0.5);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .neon-split-card {
+        flex-direction: column;
+        background: #FFFFFF;
+    }
+    .split-left {
+        background: linear-gradient(135deg, #0D6EFD, #0A58CA);
+        flex: none;
+        padding: 40px 20px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block login_content %}
+<div class="signup-container">
+    <div class="neon-split-card">
+        
+        <!-- Left Side -->
+        <div class="split-left">
+            <h1 class="neon-title">WELCOME<br>BACK!</h1>
+        </div>
+
+        <!-- Right Side -->
+        <div class="split-right">
+            <h3 class="text-dark text-center mb-5 fw-bold">Sign Up</h3>
+            
+            {% if error %}
+            <div class="alert alert-danger py-2 px-3 mb-4" style="font-size: 0.85rem; border-radius: 8px;">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="line-input-group">
+                    <select name="role" class="line-input" style="color: rgba(0,0,0,0.6);" required>
+                        <option value="" disabled selected>Select Role</option>
+                        <option value="EMPLOYEE" class="bg-white text-dark">Employee</option>
+                        <option value="INTERN" class="bg-white text-dark">Intern</option>
+                        <option value="TL" class="bg-white text-dark">Team Leader</option>
+                        <option value="ADMIN" class="bg-white text-dark">Owner/Admin</option>
+                    </select>
+                    <i data-lucide="briefcase" class="input-icon-right"></i>
+                </div>
+
+                <div class="line-input-group">
+                    <input type="text" name="username" class="line-input" placeholder="Username" required>
+                    <i data-lucide="user" class="input-icon-right"></i>
+                </div>
+
+                <div class="line-input-group">
+                    <input type="email" name="email" class="line-input" placeholder="Email" required>
+                    <i data-lucide="mail" class="input-icon-right"></i>
+                </div>
+
+                <div class="line-input-group mb-4">
+                    <input type="password" name="password" class="line-input" placeholder="Password" required>
+                    <i data-lucide="lock" class="input-icon-right"></i>
+                </div>
+
+                <button type="submit" class="btn-neon-blue">Sign Up</button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <small class="text-secondary" style="opacity: 0.8;">Already have an account? <a href="{% url 'login' %}" style="color: #0D6EFD; text-decoration: none; font-weight: 600;">Login</a></small>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

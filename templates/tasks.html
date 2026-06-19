@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Action Item Tracking{% endblock %}
+
+{% block extra_css %}
+<!-- Sortable JS for Kanban Drag and Drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<style>
+    .kanban-board { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; min-height: 600px; }
+    .kanban-column { flex: 1; min-width: 300px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; border: 1px solid var(--glass-border); }
+    .kanban-card { background: var(--card-bg); border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: grab; border-left: 4px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .kanban-card:active { cursor: grabbing; }
+    .kanban-card.priority-high { border-left-color: var(--danger); }
+    .kanban-card.priority-medium { border-left-color: var(--warning); }
+    .kanban-card.priority-low { border-left-color: var(--success); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-primary bg-opacity-25 text-primary border border-primary px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="refresh-cw" class="spin-animation" style="width:14px;"></i> Jira Auto-Sync Active</span>
+        <span class="badge bg-primary bg-opacity-25 text-primary border border-primary px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="sparkles" style="width:14px;"></i> AI Actions Extracting</span>
+    </div>
+</div>
+
+<div class="kanban-board">
+    <!-- Pending -->
+    <div class="kanban-column">
+        <h6 class="text-warning mb-3 d-flex align-items-center gap-2"><i data-lucide="circle-dashed" class="icon-orange" style="width:16px;"></i> Pending</h6>
+        <div id="col-pending" class="sortable-list" style="min-height: 100%;">
+            {% for t in tasks %}
+                {% if t.status == 'PENDING' %}
+                <div class="kanban-card priority-{{ t.priority|lower }}">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong class="text-white">{{ t.task_name }}</strong>
+                        <span class="badge bg-secondary">{{ t.priority }}</span>
+                    </div>
+                    <p class="text-secondary small mb-2">{{ t.description|truncatewords:10 }}</p>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-secondary"><i data-lucide="clock" style="width:12px;"></i> {{ t.due_date }}</small>
+                        <div class="avatar bg-primary" style="width:24px; height:24px; font-size:10px;">{{ t.assigned_to.username.0|upper }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            {% empty %}
+                <div class="kanban-card priority-medium" style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--primary);">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong class="text-white">Auto-Extracted from Meeting</strong>
+                        <span class="badge bg-primary"><i data-lucide="sparkles" style="width:10px;"></i> AI</span>
+                    </div>
+                    <p class="text-secondary small mt-1 mb-2">Automatically synced from your last meeting transcript.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- In Progress -->
+    <div class="kanban-column">
+        <h6 class="text-primary mb-3 d-flex align-items-center gap-2"><i data-lucide="loader" class="icon-blue" style="width:16px;"></i> In Progress</h6>
+        <div id="col-progress" class="sortable-list" style="min-height: 100%;">
+            <!-- Tasks drop here -->
+        </div>
+    </div>
+
+    <!-- Completed -->
+    <div class="kanban-column">
+        <h6 class="text-success mb-3 d-flex align-items-center gap-2"><i data-lucide="check-circle" class="icon-green" style="width:16px;"></i> Completed</h6>
+        <div id="col-completed" class="sortable-list" style="min-height: 100%;">
+            <!-- Tasks drop here -->
+        </div>
+    </div>
+
+    <!-- Blocked -->
+    <div class="kanban-column">
+        <h6 class="text-danger mb-3 d-flex align-items-center gap-2"><i data-lucide="x-circle" class="icon-red" style="width:16px;"></i> Blocked</h6>
+        <div id="col-blocked" class="sortable-list" style="min-height: 100%;">
+            <!-- Tasks drop here -->
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const columns = ['col-pending', 'col-progress', 'col-completed', 'col-blocked'];
+    columns.forEach(id => {
+        new Sortable(document.getElementById(id), {
+            group: 'shared', // set both lists to same group
+            animation: 150,
+            ghostClass: 'bg-dark'
+        });
+    });
+
+    function addNewTask() {
+        const name = document.getElementById('taskName').value;
+        const priority = document.getElementById('taskPriority').value;
+        const desc = document.getElementById('taskDesc').value;
+        
+        if (!name) return; // Simple validation
+        
+        const cardHtml = `
+            <div class="kanban-card priority-${priority.toLowerCase()}">
+                <div class="d-flex justify-content-between mb-2">
+                    <strong class="text-white">${name}</strong>
+                    <span class="badge bg-secondary">${priority}</span>
+                </div>
+                <p class="text-secondary small mb-2">${desc}</p>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <small class="text-secondary"><i data-lucide="clock" style="width:12px;"></i> Just now</small>
+                    <div class="avatar bg-primary" style="width:24px; height:24px; font-size:10px;">{{ user.username.0|upper }}</div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('col-pending').insertAdjacentHTML('beforeend', cardHtml);
+        
+        // Reset and close modal
+        document.getElementById('createTaskForm').reset();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
+        modal.hide();
+        
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}

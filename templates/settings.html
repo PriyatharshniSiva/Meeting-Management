@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="list-group list-group-flush bg-transparent" id="settings-list-tab" role="tablist">
+                <a href="#list-profile" class="list-group-item list-group-item-action bg-transparent text-white border-secondary active" id="list-profile-list" data-bs-toggle="list" role="tab" aria-controls="list-profile" style="background: rgba(59,130,246,0.2) !important;"><i data-lucide="user" class="icon-blue me-2"></i> Profile</a>
+                <a href="#list-security" class="list-group-item list-group-item-action bg-transparent text-secondary border-secondary" id="list-security-list" data-bs-toggle="list" role="tab" aria-controls="list-security"><i data-lucide="shield" class="icon-red me-2"></i> Security</a>
+                <a href="#list-notifications" class="list-group-item list-group-item-action bg-transparent text-secondary border-secondary" id="list-notifications-list" data-bs-toggle="list" role="tab" aria-controls="list-notifications"><i data-lucide="bell" class="icon-yellow me-2"></i> Notifications</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content" id="nav-tabContent">
+            <!-- Profile Tab -->
+            <div class="tab-pane fade show active" id="list-profile" role="tabpanel" aria-labelledby="list-profile-list">
+                <div class="glass-card">
+                    <h5 class="text-white mb-4">Profile Settings</h5>
+                    <form>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small text-uppercase">Username</label>
+                                <input type="text" class="form-control glass-input" value="{{ user.username }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small text-uppercase">Email</label>
+                                <input type="email" class="form-control glass-input" value="{{ user.email }}">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-gradient">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="tab-pane fade" id="list-security" role="tabpanel" aria-labelledby="list-security-list">
+                <div class="glass-card">
+                    <h5 class="text-white mb-4">Security Settings</h5>
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small text-uppercase">Current Password</label>
+                            <input type="password" class="form-control glass-input" placeholder="Enter current password">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small text-uppercase">New Password</label>
+                                <input type="password" class="form-control glass-input" placeholder="New password">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small text-uppercase">Confirm New Password</label>
+                                <input type="password" class="form-control glass-input" placeholder="Confirm new password">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-gradient">Update Password</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Notifications Tab -->
+            <div class="tab-pane fade" id="list-notifications" role="tabpanel" aria-labelledby="list-notifications-list">
+                <div class="glass-card">
+                    <h5 class="text-white mb-4">Notification Preferences</h5>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="emailNotif" checked>
+                        <label class="form-check-label text-white" for="emailNotif">Email Notifications</label>
+                        <small class="d-block text-secondary">Receive daily summaries and meeting reminders.</small>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="pushNotif" checked>
+                        <label class="form-check-label text-white" for="pushNotif">Push Notifications</label>
+                        <small class="d-block text-secondary">Receive immediate alerts for new invites or task assignments.</small>
+                    </div>
+                    
+                    <button type="button" class="btn btn-gradient mt-2">Save Preferences</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar Core CSS -->
+<style>
+/* Additional specific adjustments for layout */
+#calendar {
+    margin-top: 10px;
+}
+.fc-header-toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.fc-toolbar-chunk {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Modern Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 page-transition">
+    <div>
+        <h3 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
+            Meeting Calendar
+            <span class="badge bg-success bg-opacity-25 text-success ms-2 fs-6 rounded-pill border border-success d-flex align-items-center gap-1 px-3">
+                <span class="pulse-ring position-relative me-1" style="width:6px;height:6px;background:var(--success);box-shadow:none;top:0;right:0;"></span> Sync Active
+            </span>
+        </h3>
+        <p class="text-secondary mb-0">Smart Scheduling & Meeting Planning Center</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <div class="text-end d-none d-md-block me-3">
+            <h5 class="text-white mb-0" id="liveTimeCal">00:00 AM</h5>
+            <h6 class="text-secondary small mb-0" id="liveDateCal">Date</h6>
+        </div>
+        <button class="btn btn-gradient d-flex align-items-center gap-2 shadow-lg" style="box-shadow: 0 0 20px rgba(59, 130, 246, 0.4) !important;" onclick="alert('Google Calendar Sync Initialized')">
+            <i data-lucide="refresh-cw" style="width:18px;"></i> Sync Calendar
+        </button>
+    </div>
+</div>
+
+<!-- Calendar Statistics Cards -->
+<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.1s;">
+    <!-- 1. Total -->
+    <div class="col-md-4">
+        <div class="glass-card bg-gradient-blue hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
+            <div class="avatar bg-white bg-opacity-25"><i data-lucide="calendar"></i></div>
+            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Total Meetings</span></div>
+        </div>
+    </div>
+    <!-- 2. Today -->
+    <div class="col-md-4">
+        <div class="glass-card bg-gradient-purple hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
+            <div class="avatar bg-white bg-opacity-25"><i data-lucide="clock"></i></div>
+            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Today's Meetings</span></div>
+        </div>
+    </div>
+    <!-- 3. Upcoming -->
+    <div class="col-md-4">
+        <div class="glass-card bg-gradient-ai hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
+            <div class="avatar bg-white bg-opacity-25"><i data-lucide="bell"></i></div>
+            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Upcoming</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toolbar & Search -->
+<div class="glass-card mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3 page-transition" style="animation-delay: 0.2s;">
+    <div class="d-flex flex-grow-1 align-items-center gap-3">
+        <div class="position-relative flex-grow-1" style="max-width: 400px;">
+            <i data-lucide="search" class="position-absolute text-secondary" style="top:50%; transform:translateY(-50%); left:15px; width:18px;"></i>
+            <input type="text" class="form-control glass-input text-white rounded-pill w-100" placeholder="Search meetings, participants, departments..." style="padding-left: 45px;">
+        </div>
+        <!-- Filter Chips -->
+        <div class="d-none d-lg-flex gap-2">
+            <span class="filter-chip">Type: Internal <button><i data-lucide="x" style="width:12px;"></i></button></span>
+            <span class="filter-chip" style="color:var(--success); background:rgba(34,197,94,0.15); border-color:rgba(34,197,94,0.3);">Online <button style="color:var(--success);"><i data-lucide="x" style="width:12px;"></i></button></span>
+        </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center gap-1 px-3 hover-card" onclick="showToast('Advanced filters panel opened.', 'primary')"><i data-lucide="filter" style="width:14px;"></i> Advanced Filters</button>
+        <button class="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center gap-1 px-3 hover-card" onclick="showToast('Loading Team Availability matrix...', 'primary')"><i data-lucide="users" style="width:14px;"></i> Team Availability</button>
+    </div>
+</div>
+
+<!-- Main Split: Calendar | Sidebars -->
+<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.3s;">
+    <!-- Left: FullCalendar Integration -->
+    <div class="col-lg-8">
+        <div class="glass-card p-4">
+            <!-- Legend -->
+            <div class="d-flex flex-wrap gap-3 mb-3 pb-3 border-bottom border-secondary small">
+                <div class="d-flex align-items-center gap-1"><span style="width:10px;height:10px;border-radius:50%;background:rgba(34, 197, 94, 0.8);"></span> Online</div>
+                <div class="d-flex align-items-center gap-1"><span style="width:10px;height:10px;border-radius:50%;background:rgba(245, 158, 11, 0.8);"></span> Offline</div>
+                <div class="d-flex align-items-center gap-1"><span style="width:10px;height:10px;border-radius:50%;background:rgba(59, 130, 246, 0.8);"></span> Internal</div>
+                <div class="d-flex align-items-center gap-1"><span style="width:10px;height:10px;border-radius:50%;background:rgba(139, 92, 246, 0.8);"></span> Client</div>
+                <div class="d-flex align-items-center gap-1"><span style="width:10px;height:10px;border-radius:50%;background:rgba(6, 182, 212, 0.8);"></span> Training</div>
+            </div>
+            
+            <div id="calendar"></div>
+        </div>
+    </div>
+    <!-- Right: Sidebars -->
+    <div class="col-lg-4 d-flex flex-column gap-4">
+        
+        <!-- Today's Agenda Timeline -->
+        <div class="glass-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h6 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="list" class="icon-blue"></i> Today's Agenda</h6>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">4 Events</span>
+            </div>
+            <div class="position-relative ps-2">
+                <div class="agenda-timeline-connector"></div>
+                <!-- Event 1 -->
+                <div class="mb-4 position-relative z-1">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="avatar bg-card-bg border border-success text-success mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="video" style="width:14px;"></i></div>
+                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2);">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="text-white d-block mb-1">Sprint Planning</strong>
+                                <span class="badge bg-success">Live Now</span>
+                            </div>
+                            <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="clock" style="width:12px;"></i> 09:00 AM - 10:30 AM</small>
+                            <button class="btn btn-sm btn-success py-0 px-2 small">Join</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Event 2 -->
+                <div class="mb-4 position-relative z-1">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="avatar bg-card-bg border border-primary text-primary mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="users" style="width:14px;"></i></div>
+                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <strong class="text-white d-block mb-1">Team Sync</strong>
+                            <small class="text-secondary d-flex align-items-center gap-1"><i data-lucide="clock" style="width:12px;"></i> 11:00 AM - 12:00 PM</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- Event 3 -->
+                <div class="mb-0 position-relative z-1">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="avatar bg-card-bg border border-purple text-purple mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="briefcase" style="width:14px;"></i></div>
+                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2);">
+                            <strong class="text-white d-block mb-1">Client Demo</strong>
+                            <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="clock" style="width:12px;"></i> 02:00 PM - 03:00 PM</small>
+                            <button class="btn btn-sm btn-outline-purple py-0 px-2 small">Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+
+<!-- Meeting Details Modal Popup -->
+<div class="modal fade" id="meetingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0 shadow-lg" style="background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px);">
+            <div class="modal-header border-secondary border-opacity-25">
+                <h5 class="modal-title text-white d-flex align-items-center gap-2"><i data-lucide="calendar" class="icon-blue"></i> Meeting Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-white">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h4 class="fw-bold mb-0 text-white" id="modalTitle">Meeting Title</h4>
+                    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">Scheduled</span>
+                </div>
+                
+                <div class="p-3 rounded mb-3" style="background: rgba(0,0,0,0.2);">
+                    <div class="row g-2 small">
+                        <div class="col-6 d-flex align-items-center gap-2"><i data-lucide="calendar" class="text-secondary" style="width:14px;"></i> <span id="modalDate">Date</span></div>
+                        <div class="col-6 d-flex align-items-center gap-2"><i data-lucide="clock" class="text-secondary" style="width:14px;"></i> <span id="modalTime">Time</span></div>
+                        <div class="col-6 d-flex align-items-center gap-2"><i data-lucide="video" class="text-secondary" style="width:14px;"></i> Online (Zoom)</div>
+                        <div class="col-6 d-flex align-items-center gap-2"><i data-lucide="users" class="text-secondary" style="width:14px;"></i> 8 Participants</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="text-secondary small text-uppercase mb-2">Description</h6>
+                    <p class="small text-white opacity-75 m-0" id="modalDesc">No description provided.</p>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary border-opacity-25 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"><i data-lucide="trash-2" style="width:14px;"></i> Delete</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary hover-white">Edit</button>
+                    <button type="button" class="btn btn-sm btn-success d-flex align-items-center gap-1"><i data-lucide="play" style="width:14px;"></i> Join Meeting</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Live Clock & Date
+    function updateCalClock() {
+        const now = new Date();
+        document.getElementById('liveTimeCal').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        document.getElementById('liveDateCal').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    setInterval(updateCalClock, 1000);
+    updateCalClock();
+
+    // Initialize FullCalendar
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var today = new Date().toISOString().split('T')[0];
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            },
+            themeSystem: 'standard',
+            nowIndicator: true,
+            editable: true,
+            droppable: true,
+            selectable: true,
+            slotMinTime: '07:00:00',
+            slotMaxTime: '20:00:00',
+            expandRows: true,
+            stickyHeaderDates: true,
+            dayMaxEvents: true,
+            height: 'auto',
+            events: [
+                { title: 'Sprint Planning', start: today + 'T09:00:00', end: today + 'T10:30:00', classNames: ['event-internal'] },
+                { title: 'Team Sync', start: today + 'T11:00:00', end: today + 'T12:00:00', classNames: ['event-online'] },
+                { title: 'Client Demo', start: today + 'T14:00:00', end: today + 'T15:00:00', classNames: ['event-client'] },
+                { title: 'Board Meeting Q3', start: new Date(Date.now() + 86400000).toISOString().split('T')[0] + 'T11:00:00', classNames: ['event-offline'] },
+                { title: 'React Training', start: new Date(Date.now() + 172800000).toISOString().split('T')[0] + 'T13:00:00', classNames: ['event-training'] },
+                { title: 'Cancelled Check-in', start: new Date(Date.now() - 86400000).toISOString().split('T')[0] + 'T10:00:00', classNames: ['event-cancelled'] }
+            ],
+            eventClick: function(info) {
+                // Open Custom Details Modal
+                document.getElementById('modalTitle').textContent = info.event.title;
+                document.getElementById('modalDate').textContent = info.event.start.toLocaleDateString();
+                document.getElementById('modalTime').textContent = info.event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                var modal = new bootstrap.Modal(document.getElementById('meetingModal'));
+                modal.show();
+            }
+        });
+        calendar.render();
+
+    });
+</script>
+<style>
+    .hover-white:hover { color: white !important; }
+    .bg-gradient-ai .btn:hover { background: rgba(255,255,255,0.1) !important; }
+</style>
+{% endblock %}

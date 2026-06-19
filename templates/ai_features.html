@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block page_title %}AI Intelligence Features{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); border-color: rgba(139, 92, 246, 0.3);">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="p-3 rounded-circle" style="background: rgba(139, 92, 246, 0.2);">
+                    <i data-lucide="cpu" class="icon-purple" style="width: 32px; height: 32px;"></i>
+                </div>
+                <div>
+                    <h3 class="text-white mb-0">MeetingMind AI</h3>
+                    <p class="text-secondary mb-0">Your intelligent meeting assistant powered by state-of-the-art LLMs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="glass-card h-100 group hover-card">
+            <h5 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="file-text" class="icon-blue"></i> AI Minutes Generator</h5>
+            <p class="text-secondary">Upload a meeting audio recording and our AI will automatically transcribe and format the perfect Minutes of Meeting.</p>
+            <button class="btn btn-outline-primary mt-3 w-100" data-bs-toggle="modal" data-bs-target="#transcribeModal">Try Transcription</button>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card h-100 group hover-card">
+            <h5 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="list-todo" class="icon-green"></i> Auto Task Extraction</h5>
+            <p class="text-secondary">Our AI scans your discussion notes and automatically generates assigned Action Items with suggested priorities and due dates.</p>
+            <button class="btn btn-outline-success mt-3 w-100" id="btnExtract" onclick="simulateTaskExtraction()">Extract Tasks</button>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card h-100 group hover-card">
+            <h5 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="trending-up" class="icon-cyan"></i> Productivity Analytics</h5>
+            <p class="text-secondary">Get AI-driven insights on team participation, meeting efficiency, and optimal scheduling times based on historical data.</p>
+            <a href="{% url 'reports' %}" class="btn btn-outline-info mt-3 w-100">View Insights</a>
+        </div>
+    </div>
+</div>
+
+<!-- Transcription Modal -->
+<div class="modal fade" id="transcribeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card" style="background: var(--card-bg);">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title text-white">Upload Audio for Transcription</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4">
+        <input type="file" class="form-control glass-input mb-3" accept="audio/*">
+        
+        <div id="transcribeProgress" class="d-none">
+            <p class="text-secondary small mb-1">Analyzing audio with MeetingMind AI...</p>
+            <div class="progress bg-dark" style="height: 6px;">
+              <div id="progressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="transcribeResult" class="d-none mt-3 p-3 rounded" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3);">
+            <h6 class="text-success"><i data-lucide="check-circle" style="width:16px;"></i> Transcription Complete</h6>
+            <p class="text-white small mb-0 mt-2">"Alright team, let's kick off the sprint planning. John, you take the backend auth. Sarah, work on the UI designs by Friday..."</p>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-gradient w-100" onclick="simulateTranscription()">Process Audio</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function simulateTranscription() {
+        document.getElementById('transcribeProgress').classList.remove('d-none');
+        document.getElementById('transcribeResult').classList.add('d-none');
+        let bar = document.getElementById('progressBar');
+        let width = 0;
+        let interval = setInterval(() => {
+            width += 20;
+            bar.style.width = width + '%';
+            if (width >= 100) {
+                clearInterval(interval);
+                setTimeout(() => {
+                    document.getElementById('transcribeProgress').classList.add('d-none');
+                    document.getElementById('transcribeResult').classList.remove('d-none');
+                    lucide.createIcons();
+                }, 500);
+            }
+        }, 400);
+    }
+    
+    function simulateTaskExtraction() {
+        let btn = document.getElementById('btnExtract');
+        let originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader" class="icon-white" style="animation: spin 1s linear infinite; width:16px;"></i> Extracting...';
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            btn.innerHTML = '<i data-lucide="check" class="icon-white" style="width:16px;"></i> 2 Tasks Found!';
+            btn.classList.replace('btn-outline-success', 'btn-success');
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.replace('btn-success', 'btn-outline-success');
+            }, 3000);
+        }, 2000);
+    }
+</script>
+<style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+{% endblock %}

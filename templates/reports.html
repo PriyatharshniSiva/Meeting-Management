@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Analytics & Reports{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="glass-card text-center" style="border-color: rgba(59, 130, 246, 0.3);">
+            <i data-lucide="bar-chart-2" class="icon-blue mb-2" style="width:32px; height:32px;"></i>
+            <h6 class="text-white">Attendance Report</h6>
+            <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Attendance_Report', 'pdf')">Export PDF</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card text-center" style="border-color: rgba(139, 92, 246, 0.3);">
+            <i data-lucide="pie-chart" class="icon-purple mb-2" style="width:32px; height:32px;"></i>
+            <h6 class="text-white">Participation Report</h6>
+            <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Participation_Report', 'xlsx')">Export Excel</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card text-center" style="border-color: rgba(34, 197, 94, 0.3);">
+            <i data-lucide="check-square" class="icon-green mb-2" style="width:32px; height:32px;"></i>
+            <h6 class="text-white">Task Completion</h6>
+            <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Task_Completion', 'csv')">Export CSV</button>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card text-center" style="border-color: rgba(6, 182, 212, 0.3);">
+            <i data-lucide="file-text" class="icon-cyan mb-2" style="width:32px; height:32px;"></i>
+            <h6 class="text-white">Monthly Summary</h6>
+            <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Monthly_Summary', 'pdf')">Export PDF</button>
+        </div>
+    </div>
+</div>
+
+<div class="glass-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="text-white m-0">Detailed Analytics</h5>
+        <div class="d-flex gap-2">
+            <input type="date" class="form-control form-control-sm glass-input">
+        </div>
+    </div>
+    <div class="text-center py-5 text-secondary">
+        <i data-lucide="activity" style="width:48px; height:48px; opacity:0.3;" class="mb-3"></i>
+        <p>Interactive reporting charts will populate here when more meeting data is available.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function downloadReport(reportName, format) {
+        // Create dummy content based on format
+        let content = "MeetingMind Analytics Report Data\n\n";
+        let mimeType = "text/plain";
+        
+        if (format === 'csv') {
+            content = "Date,Task,Status\n2026-06-11,Design UI,Completed\n2026-06-12,Backend Auth,Pending\n";
+            mimeType = "text/csv";
+        } else if (format === 'xlsx') {
+            content = "Dummy Excel Data (Open as CSV):\nName,Role,Meetings_Attended\nAdmin,Owner,15\nEmployee,Staff,12\n";
+            mimeType = "text/csv"; // using csv for prototype
+        } else if (format === 'pdf') {
+            content = "PDF Dummy Content - This would be a generated PDF report with charts and graphs.";
+            mimeType = "application/pdf";
+        }
+
+        // Create Blob and Download Link
+        const blob = new Blob([content], { type: mimeType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${reportName}_2026.${format === 'xlsx' ? 'csv' : format}`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Show temporary success feedback on the button
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="check" style="width:16px;"></i> Downloaded';
+        btn.classList.replace('btn-outline-primary', 'btn-success');
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.replace('btn-success', 'btn-outline-primary');
+            lucide.createIcons();
+        }, 2000);
+    }
+</script>
+{% endblock %}

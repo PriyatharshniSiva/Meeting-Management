@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Minutes of Meeting (MoM){% endblock %}
+
+{% block content %}
+<div class="row mb-4 page-transition">
+    <div class="col-12">
+        <div class="glass-card p-4 d-flex justify-content-between align-items-center" style="background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3);">
+            <div>
+                <h4 class="text-white mb-1"><i data-lucide="file-audio" class="icon-purple me-2"></i> Meeting Minutes (MoM)</h4>
+                <p class="text-secondary mb-0 small">Select a meeting to view or upload its Zoom transcript</p>
+            </div>
+            <div style="min-width: 300px;">
+                <select class="form-select glass-input text-white" onchange="if(this.value) window.location.href='/mom/' + this.value + '/';">
+                    <option value="" style="color: black;">-- Select a Meeting --</option>
+                    {% for m in meetings %}
+                        <option value="{{ m.id }}" {% if selected_meeting and selected_meeting.id == m.id %}selected{% endif %} style="color: black;">
+                            {{ m.title }} ({{ m.date|date:"M d" }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not selected_meeting %}
+<div class="row">
+    <div class="col-12 text-center py-5">
+        <div class="p-5 glass-card d-inline-block border-secondary border-opacity-25">
+            <i data-lucide="inbox" class="text-secondary mb-3" style="width: 48px; height: 48px;"></i>
+            <h5 class="text-white mb-2">No Meeting Selected</h5>
+            <p class="text-secondary mb-0">Please select a meeting from the dropdown above to view its live transcript.</p>
+        </div>
+    </div>
+</div>
+{% else %}
+
+<div class="row g-4 page-transition" style="animation-delay: 0.1s;">
+    <div class="col-lg-8">
+        <div class="glass-card h-100 position-relative">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="mic" class="icon-red pulse-ring" style="box-shadow:none;"></i> Live Auto-Recording</h5>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary px-3 py-2 rounded-pill"><i data-lucide="globe" style="width:14px;"></i> English Transcription Active</span>
+            </div>
+            
+            <!-- Live Audio Waveform -->
+            <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239,68,68,0.2);">
+                <style>
+                    @keyframes wave-pulse {
+                        0% { height: 20%; }
+                        100% { height: 100%; }
+                    }
+                </style>
+                <div class="d-flex align-items-end gap-1" style="height: 30px;">
+                    <div class="bg-danger rounded" style="width: 4px; height: 100%; animation: wave-pulse 1s infinite alternate;"></div>
+                    <div class="bg-danger rounded" style="width: 4px; height: 40%; animation: wave-pulse 0.8s infinite alternate-reverse;"></div>
+                    <div class="bg-danger rounded" style="width: 4px; height: 80%; animation: wave-pulse 1.2s infinite alternate;"></div>
+                    <div class="bg-danger rounded" style="width: 4px; height: 60%; animation: wave-pulse 0.9s infinite alternate-reverse;"></div>
+                    <div class="bg-danger rounded" style="width: 4px; height: 90%; animation: wave-pulse 1.1s infinite alternate;"></div>
+                    <div class="bg-danger rounded" style="width: 4px; height: 50%; animation: wave-pulse 1s infinite alternate-reverse;"></div>
+                </div>
+                <div class="ms-2">
+                    <strong class="text-white d-block">Recording in Progress...</strong>
+                    <small class="text-danger fw-bold d-flex align-items-center gap-1"><span class="pulse-ring position-relative" style="width:6px;height:6px;background:var(--danger);box-shadow:none;"></span> Live Audio Stream</small>
+                </div>
+                <span class="text-secondary small ms-auto fw-bold">14:02 elapsed</span>
+            </div>
+
+            <!-- Transcript Feed -->
+            <div class="mb-3">
+                <label class="form-label text-secondary small text-uppercase"><i data-lucide="align-left" class="icon-purple" style="width:14px;"></i> {% if transcript_lines %}Live English Transcript{% else %}Upload Transcript{% endif %}</label>
+                <div class="form-control glass-input" style="height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2);">
+                    
+                    {% if transcript_lines %}
+                        <div class="position-sticky top-0 text-center mb-3 z-1">
+                            <span class="badge bg-dark border border-secondary text-secondary small">Real-time English Translation Active</span>
+                        </div>
+                        
+                        {% for line in transcript_lines %}
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <strong class="text-primary small">{{ line.speaker }}</strong>
+                            </div>
+                            <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">{{ line.text }}</p>
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="mt-3 text-secondary small d-flex align-items-center gap-2">
+                            <i data-lucide="check-circle" class="text-success" style="width:12px;"></i> Transcript Complete
+                        </div>
+                        
+                    {% else %}
+                        <div id="uploadView" class="d-flex flex-column align-items-center justify-content-center h-100">
+                            <i data-lucide="upload-cloud" class="text-secondary mb-3" style="width: 40px; height: 40px;"></i>
+                            <h6 class="text-white">Upload Zoom Transcript</h6>
+                            <p class="text-secondary small text-center mb-4">Upload the .txt or .vtt transcript file provided by Zoom.</p>
+                            
+                            <form method="POST" enctype="multipart/form-data" class="w-75 mb-3">
+                                {% csrf_token %}
+                                <input class="form-control glass-input mb-3" type="file" name="transcript_file" accept=".txt,.vtt" required>
+                                <button type="submit" class="btn btn-primary w-100 rounded-pill">Process Transcript</button>
+                            </form>
+                            
+                            <div class="d-flex align-items-center gap-3 w-75 mb-3">
+                                <hr class="flex-grow-1 border-secondary">
+                                <span class="text-secondary small">OR</span>
+                                <hr class="flex-grow-1 border-secondary">
+                            </div>
+                            
+                            {% if selected_meeting.meeting_link %}
+                            <a href="{{ selected_meeting.meeting_link }}" target="_blank" class="btn btn-primary w-75 rounded-pill mb-2" onclick="startLiveRecording()">
+                                <i data-lucide="video" style="width:14px; margin-right:4px;"></i> Join Zoom & Start Transcribing
+                            </a>
+                            {% endif %}
+                            
+                            <button type="button" class="btn btn-outline-danger w-75 rounded-pill" onclick="startLiveRecording()">
+                                <i data-lucide="mic" style="width:14px; margin-right:4px;"></i> Start Live Mic Recording (Local)
+                            </button>
+                        </div>
+                        
+                        <div id="liveRecordingView" class="d-none h-100 d-flex flex-column">
+                            <div class="position-sticky top-0 text-center mb-3 z-1">
+                                <span class="badge bg-danger border border-danger text-white small pulse-ring">Live Mic Recording Active</span>
+                            </div>
+                            <div id="liveTranscriptBox" class="flex-grow-1 mb-3" style="overflow-y: auto;">
+                                <!-- Live text appears here -->
+                            </div>
+                            <div class="mt-auto">
+                                <button type="button" class="btn btn-danger w-100 rounded-pill" onclick="stopLiveRecording()">Stop & Save Transcript</button>
+                                
+                                <form id="liveForm" method="POST" enctype="multipart/form-data" class="d-none">
+                                    {% csrf_token %}
+                                    <input type="file" name="transcript_file" id="liveFileInput">
+                                </form>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge bg-success bg-opacity-25 text-success px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="refresh-cw" class="spin-animation" style="width:14px;"></i> Live Auto-Syncing Attachments</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'export_pdf' selected_meeting.id %}" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px;">
+                        <i data-lucide="file-text" style="width:14px; margin-right:4px;"></i> PDF
+                    </a>
+                    <a href="{% url 'export_docx' selected_meeting.id %}" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px;">
+                        <i data-lucide="file" style="width:14px; margin-right:4px;"></i> Word
+                    </a>
+                    <a href="{% url 'export_txt' selected_meeting.id %}" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); color: var(--primary); border-radius: 6px;">
+                        <i data-lucide="file-text" style="width:14px; margin-right:4px;"></i> TXT
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="glass-card mb-4" style="border-color: rgba(245, 158, 11, 0.2);">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="text-warning mb-0 d-flex align-items-center gap-2"><i data-lucide="cpu" class="icon-yellow pulse-ring" style="width:18px; box-shadow:none;"></i> AI Summary & Actions</h6>
+                <a href="{% url 'generate_summary' selected_meeting.id %}" class="btn btn-sm btn-outline-warning py-1" style="font-size:12px;">Generate AI Summary</a>
+            </div>
+            
+            {% if selected_meeting.minutes and selected_meeting.minutes.ai_summary %}
+            <p class="text-secondary small">{{ selected_meeting.minutes.ai_summary }}</p>
+            
+            {% if selected_meeting.minutes.decisions %}
+            <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
+                <h6 class="text-warning small mb-2"><i data-lucide="check-square" style="width:14px;"></i> Key Decisions</h6>
+                <ul class="text-white small mb-0 ps-3">
+                    {% for d in selected_meeting.minutes.decisions %}
+                    <li>{{ d }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% if selected_meeting.minutes.action_items_raw %}
+            <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
+                <h6 class="text-warning small mb-2"><i data-lucide="list-todo" style="width:14px;"></i> Action Items</h6>
+                <ul class="text-white small mb-0 ps-3">
+                    {% for task in selected_meeting.minutes.action_items_raw %}
+                    <li><strong>{{ task.owner }}:</strong> {{ task.task }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <p class="text-secondary small">Click "Generate AI Summary" to automatically generate summary and extract action items from the live transcript...</p>
+            {% endif %}
+        </div>
+        
+        <div class="glass-card h-100">
+            <h5 class="text-white mb-3 d-flex align-items-center gap-2">
+                <i data-lucide="history" class="icon-green"></i> Auto-Sync Timeline
+            </h5>
+            <div class="timeline mt-4" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px;">
+                <div class="mb-3 position-relative">
+                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+                    <strong class="text-white d-block">Recording Started</strong>
+                    <small class="text-secondary">Today, 10:30 AM via Zoom Sync</small>
+                </div>
+                <div class="mb-3 position-relative">
+                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--primary);"></div>
+                    <strong class="text-white d-block">English Translation Initialized</strong>
+                    <small class="text-secondary">Today, 10:30 AM</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.addEventListener('DOMContentLoaded', (event) => {
+        {% if is_ongoing and not transcript_lines %}
+        setTimeout(() => {
+            try {
+                startLiveRecording();
+            } catch(e) {
+                console.log("Browser prevented auto-start. Click to start.");
+            }
+        }, 800);
+        {% endif %}
+    });
+
+    function generateAISummary() {
+        let btn = document.getElementById('btnAISummary');
+        let originalText = btn.innerHTML;
+        
+        // Show loading state
+        btn.innerHTML = '<i data-lucide="loader" class="icon-yellow" style="animation: spin 1s linear infinite; width:16px;"></i> Generating...';
+        lucide.createIcons();
+        
+        // Simulate network delay
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            document.getElementById('aiSummaryResult').classList.remove('d-none');
+            lucide.createIcons();
+        }, 2500);
+    }
+    
+    function startLiveRecording() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert("Your browser does not support the Web Speech API. Please use Google Chrome.");
+            return;
+        }
+        
+        document.getElementById('uploadView').classList.add('d-none');
+        document.getElementById('uploadView').classList.remove('d-flex');
+        document.getElementById('liveRecordingView').classList.remove('d-none');
+        
+        // Let the global script handle the actual recording.
+    }
+    
+    function stopLiveRecording() {
+        if(typeof globalRecognition !== 'undefined') {
+            globalRecognition.stop();
+        }
+        showToast("Transcript saved and recording stopped.", "success");
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }
+    
+    // Live Sync Polling
+    {% if is_ongoing and selected_meeting %}
+    let currentLineCount = {{ transcript_lines|length }};
+    let syncInterval = setInterval(() => {
+        fetch('/mom/latest/{{ selected_meeting.id }}/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (data.is_ongoing === false) {
+                    clearInterval(syncInterval);
+                    if (typeof globalRecognition !== 'undefined') {
+                        globalRecognition.stop();
+                    }
+                    showToast("Meeting ended. Transcription stopped.", "info");
+                    setTimeout(() => window.location.reload(), 2000);
+                    return;
+                }
+                
+                if (data.lines && data.lines.length > currentLineCount) {
+                    let box = document.getElementById('liveTranscriptBox');
+                    
+                    // Re-render the whole box if count is different
+                    let interimDiv = document.getElementById('interimDiv');
+                    let interimHTML = interimDiv ? interimDiv.outerHTML : '';
+                    
+                    let newHTML = '';
+                    data.lines.forEach(line => {
+                        newHTML += `
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <strong class="text-primary small">${line.speaker}</strong>
+                            </div>
+                            <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">${line.text}</p>
+                        </div>`;
+                    });
+                    
+                    box.innerHTML = newHTML + interimHTML;
+                    box.scrollTop = box.scrollHeight;
+                    currentLineCount = data.lines.length;
+                    
+                    // Update global transcript so it doesn't get wiped out by autosave
+                    if (typeof globalTranscriptText !== 'undefined') {
+                        let allText = "";
+                        data.lines.forEach(line => {
+                            allText += line.speaker + ": " + line.text + "\n";
+                        });
+                        globalTranscriptText = allText;
+                    }
+                }
+            }
+        });
+    }, 3000);
+    {% endif %}
+</script>
+<style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+{% endblock %}

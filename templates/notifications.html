@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Notification Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 page-transition">
+    <div>
+        <h3 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
+            Notification Center
+        </h3>
+        <p class="text-secondary mb-0">View your meeting invites, reminders, and alerts</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <form method="POST" action="{% url 'notifications' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="mark_all_read">
+            <button type="submit" class="btn btn-outline-secondary d-flex align-items-center gap-2" style="border-radius: 30px; padding: 8px 16px;">
+                <i data-lucide="check-circle" style="width:16px;"></i> Mark all as read
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="glass-card mt-4 p-4 page-transition" style="animation-delay: 0.1s;">
+    <div class="d-flex flex-column gap-3">
+        {% for note in notifications %}
+        <div class="p-4 rounded border border-{% if not note.is_read %}primary{% else %}secondary{% endif %} border-opacity-25" style="background: rgba({% if not note.is_read %}59,130,246{% else %}100,116,139{% endif %}, 0.05); position: relative;">
+            
+            {% if not note.is_read %}
+            <span class="position-absolute top-0 end-0 mt-3 me-3 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
+            {% endif %}
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-{% if note.notification_type == 'INVITE' %}primary{% elif note.notification_type == 'REMINDER' %}warning{% else %}secondary{% endif %} bg-opacity-25 text-{% if note.notification_type == 'INVITE' %}primary{% elif note.notification_type == 'REMINDER' %}warning{% else %}secondary{% endif %} rounded-pill px-3">
+                    {{ note.get_notification_type_display }}
+                </span>
+                <small class="text-secondary">{{ note.created_at|timesince }} ago</small>
+            </div>
+            
+            <p class="text-white mb-3" style="font-size: 1.05rem;">{{ note.message }}</p>
+
+            {% if note.notification_type == 'INVITE' and note.related_meeting %}
+            <div class="bg-dark bg-opacity-50 p-3 rounded mb-3 border border-secondary border-opacity-25">
+                <div class="row text-secondary small">
+                    <div class="col-sm-4 mb-2 mb-sm-0"><i data-lucide="calendar" style="width:14px; margin-right:4px;"></i> {{ note.related_meeting.date }}</div>
+                    <div class="col-sm-4 mb-2 mb-sm-0"><i data-lucide="clock" style="width:14px; margin-right:4px;"></i> {{ note.related_meeting.time }}</div>
+                    <div class="col-sm-4"><i data-lucide="user" style="width:14px; margin-right:4px;"></i> Organized by {{ note.related_meeting.created_by.username }}</div>
+                </div>
+            </div>
+
+            <form method="POST" action="{% url 'rsvp' note.related_meeting.id %}">
+                {% csrf_token %}
+                <div class="d-flex gap-2">
+                    <button type="submit" name="status" value="ACCEPTED" class="btn btn-sm btn-success rounded-pill px-3"><i data-lucide="check" style="width:14px; margin-right:4px;"></i> Accept</button>
+                    <button type="submit" name="status" value="TENTATIVE" class="btn btn-sm btn-warning rounded-pill px-3"><i data-lucide="help-circle" style="width:14px; margin-right:4px;"></i> Tentative</button>
+                    <button type="submit" name="status" value="DECLINED" class="btn btn-sm btn-outline-danger rounded-pill px-3"><i data-lucide="x" style="width:14px; margin-right:4px;"></i> Decline</button>
+                </div>
+            </form>
+            {% endif %}
+
+        </div>
+        {% empty %}
+        <div class="p-5 text-center text-secondary">
+            <i data-lucide="bell-off" style="width:48px; height:48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p class="mb-0">You're all caught up! No notifications right now.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+{% endblock %}
+
+{% block content %}
+<!-- Modern Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 page-transition">
+    <div>
+        <h3 class="text-white fw-bold mb-1 d-flex align-items-center gap-2">
+            Meetings Management
+        </h3>
+        <p class="text-secondary mb-0">Schedule and manage company meetings efficiently</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <div class="text-end d-none d-md-block me-3">
+            <h6 class="text-white mb-0" id="currentDateDisplay">Date</h6>
+        </div>
+        {% if request.user.role == 'ADMIN' %}
+        <button class="btn btn-primary d-flex align-items-center gap-2 shadow-lg" data-bs-toggle="modal" data-bs-target="#createMeetingModal" style="border-radius: 30px; padding: 10px 20px;">
+            <i data-lucide="plus" style="width:18px;"></i> Create Meeting
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- Main Split: Schedule Form | Upcoming & Calendar -->
+<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.2s;">
+    {% if request.user.role == 'ADMIN' %}
+    <!-- Left Column: Advanced Schedule Form -->
+    <div class="col-lg-8">
+
+        <!-- Registered Team Members Panel -->
+        <div class="glass-card mt-4 p-4">
+            <h5 class="text-white mb-4 d-flex align-items-center gap-2"><i data-lucide="users" class="icon-purple"></i> Registered Team Members</h5>
+            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                <table class="table table-hover mb-0 bg-transparent align-middle" style="color: var(--text-primary);">
+                    <thead class="position-sticky top-0 z-1" style="background: var(--nav-hover-bg);">
+                        <tr>
+                            <th class="border-0 text-secondary fw-normal py-2 ps-3">User Name</th>
+                            <th class="border-0 text-secondary fw-normal py-2">Email</th>
+                            <th class="border-0 text-secondary fw-normal py-2">Role</th>
+                            <th class="border-0 text-secondary fw-normal py-2 text-end pe-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for u in users %}
+                        <tr>
+                            <td class="border-bottom py-3 ps-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar bg-gradient-purple text-white" style="width:32px;height:32px;font-size:12px; border:2px solid var(--card-bg);">{{ u.username.0|upper }}</div>
+                                    <strong class="text-white">{{ u.username }}</strong>
+                                </div>
+                            </td>
+                            <td class="border-bottom py-3 text-secondary">{{ u.email }}</td>
+                            <td class="border-bottom py-3">
+                                <span class="badge bg-primary bg-opacity-25 text-primary rounded-pill px-3">{{ u.get_role_display }}</span>
+                            </td>
+                            <td class="border-bottom py-3 text-end pe-3">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{% url 'invite_user' u.id %}" class="btn btn-sm btn-outline-primary" style="border-radius: 20px;"><i data-lucide="user-plus" style="width:14px; margin-right:4px;"></i> Invite</a>
+                                    <button class="btn btn-sm btn-outline-danger" style="border-radius: 20px;" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ u.id }}"><i data-lucide="trash-2" style="width:14px; margin-right:4px;"></i> Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+
+
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary py-4">No team members registered yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Right Column: Upcoming -->
+    <div class="{% if request.user.role == 'ADMIN' %}col-lg-4{% else %}col-lg-8 mx-auto{% endif %} d-flex flex-column gap-4">
+
+        <!-- Upcoming Meetings Side Panel -->
+        <div class="glass-card flex-grow-1 overflow-auto" style="max-height: 500px;">
+            <div class="d-flex justify-content-between align-items-center mb-3 sticky-top" style="background: var(--card-bg); padding-bottom:10px;">
+                <h6 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="clock" class="icon-purple"></i> Upcoming</h6>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">4 Today</span>
+            </div>
+            
+            <div class="d-flex flex-column gap-3">
+                {% for m in meetings %}
+                <div class="p-3 rounded border border-{% if m.meeting_type == 'ONLINE' %}success{% else %}warning{% endif %} border-opacity-25" style="background: rgba({% if m.meeting_type == 'ONLINE' %}34, 197, 94{% else %}245, 158, 11{% endif %}, 0.05);">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="badge bg-{% if m.meeting_type == 'ONLINE' %}success{% else %}warning{% endif %} bg-opacity-25 text-{% if m.meeting_type == 'ONLINE' %}success{% else %}warning{% endif %} rounded-pill d-flex align-items-center gap-1">
+                            {% if m.meeting_type == 'ONLINE' %}
+                            <span class="pulse-ring position-relative me-1" style="width:6px;height:6px;background:var(--success);box-shadow:none;top:0;right:0;"></span>
+                            {% endif %}
+                            {{ m.get_meeting_type_display|default:m.meeting_type }}
+                        </span>
+                        <small class="text-secondary">{{ m.date|date:"M d" }} {{ m.time|time:"g:i A" }}</small>
+                    </div>
+                    <h6 class="text-white mb-1">{{ m.title }}</h6>
+                    <small class="text-secondary d-flex align-items-center gap-1 mb-3">
+                        {% if m.meeting_type == 'ONLINE' %}
+                        <i data-lucide="video" style="width:12px;"></i> Online
+                        {% else %}
+                        <i data-lucide="building" style="width:12px;"></i> Offline
+                        {% endif %}
+                        {% if m.duration %} • {{ m.duration }} mins{% endif %}
+                    </small>
+                    <div class="d-flex gap-2">
+                        {% if request.user.role == 'ADMIN' %}
+                        <button class="btn btn-sm {% if m.meeting_type == 'ONLINE' %}btn-success{% else %}btn-outline-warning{% endif %} flex-grow-1 py-1" data-bs-toggle="modal" data-bs-target="#meetingDetailModal{{ m.id }}">Join / Details</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete" data-bs-toggle="modal" data-bs-target="#deleteMeetingModal{{ m.id }}">
+                            <i data-lucide="trash-2" style="width:14px;"></i>
+                        </button>
+                        {% else %}
+                        <button class="btn btn-sm {% if m.meeting_type == 'ONLINE' %}btn-success{% else %}btn-outline-warning{% endif %} flex-grow-1 py-1" data-bs-toggle="modal" data-bs-target="#meetingDetailModal{{ m.id }}">Join / Details</button>
+                        <form method="POST" action="{% url 'rsvp' m.id %}" class="d-inline flex-grow-1 m-0 p-0">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="DECLINED">
+                            <button type="submit" class="btn btn-sm btn-outline-danger w-100 py-1">Decline</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+
+                {% empty %}
+                <div class="p-4 text-center text-secondary">
+                    <p class="mb-0">No upcoming meetings scheduled.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Meetings Table View (Removed) -->
+<div class="d-none" id="tableView">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 bg-transparent align-middle" style="color: var(--text-primary);">
+            <thead style="background: var(--nav-hover-bg);">
+                <tr>
+                    <th class="border-0 text-secondary fw-normal py-4 ps-4">Meeting Title</th>
+                    <th class="border-0 text-secondary fw-normal py-4">Date & Time</th>
+                    <th class="border-0 text-secondary fw-normal py-4">Type</th>
+                    <th class="border-0 text-secondary fw-normal py-4">Participants</th>
+                    <th class="border-0 text-secondary fw-normal py-4">Priority</th>
+                    <th class="border-0 text-secondary fw-normal py-4">Status</th>
+                    <th class="border-0 text-secondary fw-normal py-4 text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                <!-- Row 1 -->
+                <tr>
+                    <td class="border-bottom py-4 ps-4">
+                        <strong class="text-white d-block">Sprint Planning</strong>
+                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">Discussing Q3 engineering tickets</small>
+                    </td>
+                    <td class="border-bottom py-4 text-white">Today<br><small class="text-secondary">10:00 AM</small></td>
+                    <td class="border-bottom py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="video" class="icon-green me-1" style="width:12px;"></i> Online</span></td>
+                    <td class="border-bottom py-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar bg-primary text-white" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">A</div>
+                            <div class="avatar bg-primary text-white" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">B</div>
+                            <div class="avatar bg-secondary text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">+6</div>
+                        </div>
+                    </td>
+                    <td class="border-bottom py-4"><span class="badge bg-danger bg-opacity-25 text-danger rounded-pill border border-danger">High</span></td>
+                    <td class="border-bottom py-4"><span class="badge bg-success bg-opacity-25 text-success rounded-pill border border-success">Ongoing</span></td>
+                    <td class="border-bottom py-4 text-end pe-4">
+                        <button class="btn btn-sm btn-icon text-success border-0" title="Join"><i data-lucide="play-circle" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
+                    </td>
+                </tr>
+                <!-- Row 2 -->
+                <tr>
+                    <td class="border-bottom py-4 ps-4">
+                        <strong class="text-white d-block">Client Demo: Beta</strong>
+                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">External presentation</small>
+                    </td>
+                    <td class="border-bottom py-4 text-white">Today<br><small class="text-secondary">2:30 PM</small></td>
+                    <td class="border-bottom py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="video" class="icon-green me-1" style="width:12px;"></i> Online</span></td>
+                    <td class="border-bottom py-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar bg-warning text-dark" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">P</div>
+                            <div class="avatar bg-secondary text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">+3</div>
+                        </div>
+                    </td>
+                    <td class="border-bottom py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Critical</span></td>
+                    <td class="border-bottom py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Scheduled</span></td>
+                    <td class="border-bottom py-4 text-end pe-4">
+                        <button class="btn btn-sm btn-icon text-primary border-0" title="Details"><i data-lucide="eye" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
+                    </td>
+                </tr>
+                <!-- Row 3 -->
+                <tr>
+                    <td class="border-0 py-4 ps-4">
+                        <strong class="text-white d-block">Board Meeting Q3</strong>
+                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">Quarterly financials review</small>
+                    </td>
+                    <td class="border-0 py-4 text-white">Tomorrow<br><small class="text-secondary">11:00 AM</small></td>
+                    <td class="border-0 py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="building" class="icon-orange me-1" style="width:12px;"></i> Offline</span></td>
+                    <td class="border-0 py-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar bg-danger text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">12</div>
+                        </div>
+                    </td>
+                    <td class="border-0 py-4"><span class="badge bg-warning bg-opacity-25 text-warning rounded-pill border border-warning">Medium</span></td>
+                    <td class="border-0 py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Scheduled</span></td>
+                    <td class="border-0 py-4 text-end pe-4">
+                        <button class="btn btn-sm btn-icon text-primary border-0" title="Details"><i data-lucide="eye" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
+                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+   </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Header Date
+    const now = new Date();
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+    document.getElementById('currentDateDisplay').textContent = now.toLocaleDateString('en-US', dateOptions);
+
+    // Form Pill Buttons Logic
+    document.querySelectorAll('.pill-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Un-active siblings
+            this.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+            // Active this
+            this.classList.add('active');
+        });
+    });
+
+    // Meeting Type Toggle
+    function toggleMeetingType(type) {
+        const onlineCard = document.getElementById('typeOnline');
+        const offlineCard = document.getElementById('typeOffline');
+        const linkSection = document.getElementById('meetingLinkSection');
+        
+        if (type === 'online') {
+            onlineCard.classList.add('selected-online');
+            offlineCard.classList.remove('selected-offline');
+            linkSection.style.display = 'block';
+        } else {
+            offlineCard.classList.add('selected-offline');
+            onlineCard.classList.remove('selected-online');
+            linkSection.style.display = 'none';
+        }
+    }
+
+
+
+    // AI Auto Schedule Logic
+    function autoScheduleMeeting() {
+        let btn = document.getElementById('btnAutoSchedule');
+        let originalText = btn.innerHTML;
+        
+        // Show loading state
+        btn.innerHTML = '<i data-lucide="loader" class="spin-animation" style="width:18px;"></i> Scheduling...';
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            alert("AI Auto-Scheduler: Automatically analyzed participant availability and synced to Google Calendar.\n\nMeeting 'Sync-up' scheduled for Tomorrow at 10:00 AM!");
+            btn.innerHTML = originalText;
+            lucide.createIcons();
+        }, 1500);
+    }
+
+    function generateMeetingLink() {
+        const chars = '0123456789';
+        const segment = () => Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const meetingId = segment();
+        const pwd = Math.random().toString(36).slice(-8);
+        const linkInput = document.getElementById('meetingLinkInput');
+        linkInput.value = `https://zoom.us/j/${meetingId}?pwd=${pwd}`;
+        
+        // Brief highlight effect
+        linkInput.style.transition = 'background-color 0.3s';
+        linkInput.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+        setTimeout(() => { linkInput.style.backgroundColor = ''; }, 300);
+    }
+</script>
+<style>
+    .hover-white:hover { color: #fff !important; }
+</style>
+
+<!-- Create Meeting Modal -->
+<div class="modal fade" id="createMeetingModal" tabindex="-1" aria-labelledby="createMeetingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card" style="background: var(--card-bg); border: 1px solid var(--glass-border);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel"><i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{% url 'meetings' %}">
+          {% csrf_token %}
+          <div class="modal-body text-white">
+              <div class="mb-3">
+                  <label class="form-label text-secondary small mb-1">Meeting Title</label>
+                  <input type="text" name="title" class="form-control glass-input text-white" placeholder="e.g. Sprint Planning" required>
+              </div>
+              <div class="row g-3 mb-3">
+                  <div class="col-6">
+                      <label class="form-label text-secondary small mb-1">Date</label>
+                      <input type="text" name="date" class="form-control glass-input text-white date-picker" placeholder="Select Date" required>
+                  </div>
+                  <div class="col-6">
+                      <label class="form-label text-secondary small mb-1">Time</label>
+                      <input type="text" name="time" class="form-control glass-input text-white time-picker" placeholder="Select Time" required>
+                  </div>
+              </div>
+              <div class="row g-3 mb-3">
+                  <div class="col-6">
+                      <label class="form-label text-secondary small mb-1">Duration (mins)</label>
+                      <input type="number" name="duration" class="form-control glass-input text-white" placeholder="e.g. 60" required>
+                  </div>
+                  <div class="col-6">
+                      <label class="form-label text-secondary small mb-1">Meeting Type</label>
+                      <select name="meeting_type" id="meetingTypeSelect" class="form-select glass-input text-white">
+                          <option class="bg-dark" value="ONLINE">Online</option>
+                          <option class="bg-dark" value="OFFLINE">Offline</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="mb-3 d-none" id="locationFieldContainer">
+                  <label class="form-label text-secondary small mb-1">Location</label>
+                  <input type="text" name="location" class="form-control glass-input text-white" placeholder="e.g. Conference Room A">
+              </div>
+              <div class="mb-3" id="linkFieldContainer">
+                  <label class="form-label text-secondary small mb-1">Zoom Meeting Link</label>
+                  <input type="url" name="meeting_link" id="meetingLinkInput" class="form-control glass-input text-white" placeholder="Paste meeting link here (e.g. https://zoom.us/j/...)">
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-secondary small mb-2">Roles to Invite</label>
+                  <div class="d-flex flex-wrap gap-3">
+                      <div class="form-check custom-checkbox">
+                          <input class="form-check-input" type="checkbox" name="roles" value="ADMIN" id="roleAdmin">
+                          <label class="form-check-label" style="color: var(--text-primary);" for="roleAdmin">Owner/Admin</label>
+                      </div>
+                      <div class="form-check custom-checkbox">
+                          <input class="form-check-input" type="checkbox" name="roles" value="TL" id="roleTL">
+                          <label class="form-check-label" style="color: var(--text-primary);" for="roleTL">Team Leader</label>
+                      </div>
+                      <div class="form-check custom-checkbox">
+                          <input class="form-check-input" type="checkbox" name="roles" value="EMPLOYEE" id="roleEmployee">
+                          <label class="form-check-label" style="color: var(--text-primary);" for="roleEmployee">Employee</label>
+                      </div>
+                      <div class="form-check custom-checkbox">
+                          <input class="form-check-input" type="checkbox" name="roles" value="INTERN" id="roleIntern">
+                          <label class="form-check-label" style="color: var(--text-primary);" for="roleIntern">Intern</label>
+                      </div>
+                  </div>
+                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the roles you want to invite. All users with these roles will be included.</small>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-secondary small mb-1">Description / Agenda</label>
+                  <textarea name="description" class="form-control glass-input text-white" rows="3" placeholder="Brief agenda..."></textarea>
+              </div>
+          </div>
+          <div class="modal-footer border-secondary border-opacity-25">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary rounded-pill px-4">Create Meeting</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Meeting Detail Modals -->
+{% for m in meetings %}
+<div class="modal fade" id="meetingDetailModal{{ m.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card" style="background: var(--card-bg); border: 1px solid var(--glass-border);">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title text-white">{{ m.title }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-white">
+          <p class="text-secondary small mb-3"><strong>Type:</strong> {{ m.get_meeting_type_display|default:m.meeting_type }}</p>
+          {% if m.location %}
+          <p class="text-secondary small mb-3"><strong>Location:</strong> {{ m.location }}</p>
+          {% endif %}
+          {% if m.meeting_link %}
+          <p class="text-secondary small mb-3"><strong>Meeting Link:</strong> <a href="{{ m.meeting_link }}" target="_blank" class="text-info">{{ m.meeting_link }}</a></p>
+          {% endif %}
+          <p class="text-secondary small mb-3"><strong>Date & Time:</strong> {{ m.date }} at {{ m.time }}</p>
+          <p class="text-secondary small mb-3"><strong>Duration:</strong> {{ m.duration }} mins</p>
+          <p class="text-secondary small mb-3"><strong>Description:</strong><br/> {{ m.description|default:"No description provided." }}</p>
+      </div>
+      <div class="modal-footer border-secondary border-opacity-25">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+        {% if m.meeting_type == 'ONLINE' %}
+        {% if m.meeting_link %}
+            <a href="{{ m.meeting_link }}" target="_blank" class="btn btn-success rounded-pill px-4">Join Zoom Meeting</a>
+        {% else %}
+            <button class="btn btn-secondary rounded-pill px-4" disabled>No Link Available</button>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Meeting Modal for this meeting -->
+{% if request.user.role == 'ADMIN' %}
+<div class="modal fade" id="deleteMeetingModal{{ m.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-danger border-opacity-50" style="background: var(--card-bg);">
+            <div class="modal-header border-secondary border-opacity-25">
+                <h5 class="modal-title text-danger d-flex align-items-center gap-2"><i data-lucide="alert-triangle"></i> Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-white">
+                <p>Are you sure you want to delete the meeting <strong>{{ m.title }}</strong>?</p>
+                <p class="small text-secondary mb-0">This action cannot be undone and will permanently remove this meeting.</p>
+            </div>
+            <div class="modal-footer border-secondary border-opacity-25">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{% url 'delete_meeting' m.id %}" class="m-0 p-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger rounded-pill">Delete Meeting</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endfor %}
+
+<!-- Delete User Modals -->
+{% if request.user.role == 'ADMIN' %}
+{% for u in users %}
+<div class="modal fade" id="deleteUserModal{{ u.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-danger border-opacity-50" style="background: var(--card-bg);">
+            <div class="modal-header border-secondary border-opacity-25">
+                <h5 class="modal-title text-danger d-flex align-items-center gap-2"><i data-lucide="alert-triangle"></i> Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-white">
+                <p>Are you sure you want to delete <strong>{{ u.username }}</strong>?</p>
+                <p class="small text-secondary mb-0">This action cannot be undone and will permanently remove the user from the system.</p>
+            </div>
+            <div class="modal-footer border-secondary border-opacity-25">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'delete_user' u.id %}" class="btn btn-danger rounded-pill">Delete User</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        flatpickr(".time-picker", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            altInput: true,
+            altFormat: "h:i K",
+            allowInput: true
+        });
+        flatpickr(".date-picker", {
+            altInput: true,
+            altFormat: "F j, Y",
+            dateFormat: "Y-m-d",
+            allowInput: true
+        });
+        
+        const typeSelect = document.getElementById('meetingTypeSelect');
+        const locContainer = document.getElementById('locationFieldContainer');
+        const linkContainer = document.getElementById('linkFieldContainer');
+        if (typeSelect && locContainer && linkContainer) {
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'OFFLINE') {
+                    locContainer.classList.remove('d-none');
+                    linkContainer.classList.add('d-none');
+                } else {
+                    locContainer.classList.add('d-none');
+                    linkContainer.classList.remove('d-none');
+                    if (!document.getElementById('meetingLinkInput').value) {
+                        generateMeetingLink();
+                    }
+                }
+            });
+        }
+        
+        // Auto-generate on modal open
+        const createModal = document.getElementById('createMeetingModal');
+        if (createModal) {
+            createModal.addEventListener('show.bs.modal', function () {
+                const typeSelect = document.getElementById('meetingTypeSelect');
+                if (typeSelect.value === 'ONLINE' && !document.getElementById('meetingLinkInput').value) {
+                    generateMeetingLink();
+                }
+            });
+        }
+        
+        // WebSocket Connection for Real-Time Notifications
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+        const notificationSocket = new WebSocket(
+            wsScheme + '://' + window.location.host + '/ws/notifications/'
+        );
+
+        notificationSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log("🔔 Live Notification received via WebSocket: ", data.message);
+        };
+
+        notificationSocket.onclose = function(e) {
+            console.error('Notification socket closed unexpectedly');
+        };
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Meeting Management System{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
+    
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Theme Initializer to prevent flashing -->
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+
+    {% if user.is_authenticated %}
+    <div class="app-layout">
+        <!-- Top Navbar -->
+        <header class="header-nav glass-nav">
+            <!-- Top Tier -->
+            <div class="header-top">
+                <div class="nav-left d-flex align-items-center gap-3">
+                    <div class="nav-text d-flex align-items-center gap-2">
+                        <i data-lucide="video" class="icon-cyan" style="width:24px;height:24px;"></i>
+                        <h4 class="mb-0">Meeting<span class="text-primary">Mind</span></h4>
+                    </div>
+                    <div class="vertical-divider mx-2 d-none d-md-block"></div>
+                    <h5 class="page-title mb-0 d-none d-md-block">{% block page_title %}Dashboard{% endblock %}</h5>
+                </div>
+                
+                <div class="nav-right d-flex align-items-center gap-4">
+                    <button id="themeToggleBtn" class="btn btn-link text-decoration-none p-0" style="color: var(--text-secondary);">
+                        <span id="themeIconLightWrapper"><i data-lucide="sun" style="width:20px; height:20px;"></i></span>
+                        <span id="themeIconDarkWrapper" class="d-none"><i data-lucide="moon" style="width:20px; height:20px;"></i></span>
+                    </button>
+
+                    <div class="dropdown">
+                        <a href="#" class="notification-bell text-decoration-none position-relative" data-bs-toggle="dropdown" id="notificationDropdownToggle" aria-expanded="false">
+                            <i data-lucide="bell" class="icon-yellow"></i>
+                            <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; {% if user.unread_notifications_count == 0 %}display:none;{% endif %}">
+                                {{ user.unread_notifications_count }}
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end p-0 glass-card mt-2 shadow-lg" aria-labelledby="notificationDropdownToggle" style="width: 380px; border-color: rgba(255,255,255,0.1); overflow: hidden; background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(20px);">
+                            <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 text-white fw-bold d-flex align-items-center gap-2"><i data-lucide="bell" style="width:16px;"></i> Notifications</h6>
+                                <a href="{% url 'notifications' %}" class="small text-primary text-decoration-none">View All</a>
+                            </div>
+                            <div id="notificationList" style="max-height: 350px; overflow-y: auto;" class="bg-black bg-opacity-25">
+                                <div class="p-4 text-center text-secondary small">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-profile d-flex align-items-center gap-2">
+                        <div class="avatar bg-gradient-blue-purple">{{ user.username.0|upper }}</div>
+                        <div class="user-info d-none d-md-block">
+                            <p class="mb-0 fw-bold">{{ user.username }}</p>
+                            <small class="text-white opacity-75">{{ user.get_role_display }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Tier: Links -->
+            <div class="header-bottom">
+                <nav class="horizontal-nav">
+                    <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="icon-blue"></i> <span class="nav-text">Dashboard</span></a>
+                    <a href="{% url 'meetings' %}" class="nav-item {% if request.resolver_match.url_name == 'meetings' %}active{% endif %}"><i data-lucide="users" class="icon-purple"></i> <span class="nav-text">Meetings</span></a>
+                    <a href="{% url 'calendar' %}" class="nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}"><i data-lucide="calendar" class="icon-cyan"></i> <span class="nav-text">Calendar</span></a>
+                    <a href="{% url 'attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}"><i data-lucide="check-square" class="icon-green"></i> <span class="nav-text">Attendance</span></a>
+                    <a href="{% url 'mom' %}" class="nav-item {% if request.resolver_match.url_name == 'mom' %}active{% endif %}"><i data-lucide="file-text" class="icon-blue"></i> <span class="nav-text">Minutes of Meeting</span></a>
+                    <a href="{% url 'tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'tasks' %}active{% endif %}"><i data-lucide="list-todo" class="icon-orange"></i> <span class="nav-text">Action Items</span></a>
+                    <a href="{% url 'reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}"><i data-lucide="bar-chart-2" class="icon-blue"></i> <span class="nav-text">Reports</span></a>
+                    <a href="{% url 'ai_features' %}" class="nav-item {% if request.resolver_match.url_name == 'ai_features' %}active{% endif %}"><i data-lucide="cpu" class="icon-purple"></i> <span class="nav-text">AI Features</span></a>
+                    <div class="flex-grow-1"></div>
+                    <a href="{% url 'settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}"><i data-lucide="settings" class="icon-gray"></i> <span class="nav-text">Settings</span></a>
+                    <a href="{% url 'logout' %}" class="nav-item text-danger"><i data-lucide="log-out" class="icon-red"></i> <span class="nav-text">Logout</span></a>
+                </nav>
+            </div>
+        </header>
+
+            <!-- Page Content -->
+            <div class="container-fluid p-4 page-transition">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}info{% endif %} alert-dismissible fade show" role="alert" style="background: rgba(0,0,0,0.5); border: 1px solid var(--{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}primary{% endif %}); color: white;">
+                            {{ message }}
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+        {% block login_content %}{% endblock %}
+    {% endif %}
+
+    <!-- Global Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
+        <div id="globalToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid var(--glass-border) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 12px;">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2 fw-medium" id="globalToastMessage">
+                    <!-- Message goes here -->
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Initialize Icons -->
+    <script>
+      lucide.createIcons();
+      
+      // Theme Toggle Logic
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const themeIconLightWrapper = document.getElementById('themeIconLightWrapper');
+      const themeIconDarkWrapper = document.getElementById('themeIconDarkWrapper');
+      
+      if (themeToggleBtn) {
+          const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+          
+          if (currentTheme === 'light') {
+              themeIconDarkWrapper.classList.remove('d-none');
+              themeIconLightWrapper.classList.add('d-none');
+          } else {
+              themeIconLightWrapper.classList.remove('d-none');
+              themeIconDarkWrapper.classList.add('d-none');
+          }
+          
+          themeToggleBtn.addEventListener('click', () => {
+              let theme = document.documentElement.getAttribute('data-theme');
+              if (theme === 'light') {
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                  localStorage.setItem('theme', 'dark');
+                  themeIconLightWrapper.classList.remove('d-none');
+                  themeIconDarkWrapper.classList.add('d-none');
+              } else {
+                  document.documentElement.setAttribute('data-theme', 'light');
+                  localStorage.setItem('theme', 'light');
+                  themeIconDarkWrapper.classList.remove('d-none');
+                  themeIconLightWrapper.classList.add('d-none');
+              }
+          });
+      }
+
+      // Global Toast Function
+      function showToast(message, type = 'info') {
+          const toastEl = document.getElementById('globalToast');
+          const toastMessage = document.getElementById('globalToastMessage');
+          
+          let icon = '<i data-lucide="info" class="text-primary"></i>';
+          if (type === 'success') icon = '<i data-lucide="check-circle" class="text-success"></i>';
+          if (type === 'warning') icon = '<i data-lucide="alert-triangle" class="text-warning"></i>';
+          if (type === 'error') icon = '<i data-lucide="x-circle" class="text-danger"></i>';
+          
+          toastMessage.innerHTML = `${icon} <span>${message}</span>`;
+          lucide.createIcons();
+          
+          const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+          toast.show();
+      }
+
+    </script>
+    
+    {% if global_ongoing_meeting %}
+    <!-- Global Floating Indicator -->
+    <div id="globalRecordingBadge" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: rgba(239, 68, 68, 0.9); border: 1px solid red; padding: 10px 15px; border-radius: 50px; color: white; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); cursor: pointer;" onclick="window.location.href='/mom/{{ global_ongoing_meeting.id }}/'">
+        <div style="width: 10px; height: 10px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+        Auto-Transcribing Meeting: {{ global_ongoing_meeting.title }}
+    </div>
+
+    <script>
+    let globalRecognition;
+    let globalTranscriptText = "";
+    // Grab existing history from DOM if on MoM page, else start fresh
+    let globalMeetingId = "{{ global_ongoing_meeting.id }}";
+    let globalUsername = "{{ request.user.username|default:'Admin' }}";
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            console.log("Web Speech API not supported.");
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        globalRecognition = new SpeechRecognition();
+        globalRecognition.continuous = true;
+        globalRecognition.interimResults = true;
+
+        globalRecognition.onresult = function(event) {
+            let finalTranscript = '';
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            let box = document.getElementById('liveTranscriptBox');
+
+            if (interimTranscript !== '') {
+                if (box) {
+                    let interimDiv = document.getElementById('interimDiv');
+                    if (!interimDiv) {
+                        interimDiv = document.createElement('div');
+                        interimDiv.id = 'interimDiv';
+                        interimDiv.className = 'mb-3 opacity-50';
+                        box.appendChild(interimDiv);
+                    }
+                    interimDiv.innerHTML = `
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <strong class="text-primary small">${globalUsername} <i data-lucide="mic" class="pulse-ring" style="width:12px;"></i></strong>
+                        </div>
+                        <p class="text-secondary small m-0 ps-2" style="border-left: 2px dashed var(--primary);">${interimTranscript}</p>
+                    `;
+                    box.scrollTop = box.scrollHeight;
+                }
+            } else if (box) {
+                let interimDiv = document.getElementById('interimDiv');
+                if (interimDiv) interimDiv.remove();
+            }
+
+            if (finalTranscript.trim() !== '') {
+                let lineStr = globalUsername + ": " + finalTranscript.trim() + "\n";
+                
+                // If on MoM page, append to UI
+                if (box) {
+                    let interimDiv = document.getElementById('interimDiv');
+                    if (interimDiv) interimDiv.remove();
+                    
+                    let div = document.createElement('div');
+                    div.className = 'mb-3';
+                    div.innerHTML = `
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <strong class="text-primary small">${globalUsername}</strong>
+                        </div>
+                        <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">${finalTranscript.trim()}</p>
+                    `;
+                    box.appendChild(div);
+                    box.scrollTop = box.scrollHeight;
+                    
+                    // The backend autosave endpoint will fully replace the history.
+                    // So we must fetch the entire current text block from the UI to preserve past history!
+                    // Let's just collect all <p> tags inside the box.
+                    let allText = "";
+                    let paragraphs = box.querySelectorAll('p.text-secondary');
+                    let names = box.querySelectorAll('strong.text-primary');
+                    for (let j = 0; j < paragraphs.length; j++) {
+                        allText += names[j].innerText + ": " + paragraphs[j].innerText + "\n";
+                    }
+                    globalTranscriptText = allText;
+                } else {
+                    // If not on MoM page, we don't have the past history loaded in DOM.
+                    // We will just accumulate. The backend replace will wipe history if we aren't careful!
+                    // Wait, our backend view `autosave_transcript` replaces the whole history!
+                    // If we just send the new lines, the backend needs to append it.
+                    globalTranscriptText = lineStr;
+                }
+
+                // Autosave to backend
+                fetch('/mom/autosave/' + globalMeetingId + '/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ transcript: globalTranscriptText, mode: box ? 'replace' : 'append' })
+                });
+            }
+        };
+
+        globalRecognition.onerror = function(event) {
+            console.log("Speech recognition error", event.error);
+        };
+
+        globalRecognition.onend = function() {
+            setTimeout(() => {
+                try { globalRecognition.start(); } catch(e){}
+            }, 1000);
+        };
+
+        setTimeout(() => {
+            try {
+                globalRecognition.start();
+            } catch(e) {
+                console.log("Browser blocked auto-start.");
+            }
+        }, 1000);
+        
+        document.body.addEventListener('click', function startOnce() {
+            try { globalRecognition.start(); } catch(e){}
+            document.body.removeEventListener('click', startOnce);
+        });
+    });
+    </script>
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+
+    {% if user.is_authenticated %}
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const notifBadge = document.getElementById("notificationBadge");
+        const notifList = document.getElementById("notificationList");
+        const notifDropdownToggle = document.getElementById("notificationDropdownToggle");
+
+        function fetchUnreadCount() {
+            fetch("/notifications/unread-count/")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (data.count > 0) {
+                            notifBadge.style.display = 'block';
+                            notifBadge.innerText = data.count;
+                        } else {
+                            notifBadge.style.display = 'none';
+                        }
+                    }
+                });
+        }
+
+        function fetchNotifications() {
+            fetch("/notifications/fetch/")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (data.notifications.length === 0) {
+                            notifList.innerHTML = '<div class="p-4 text-center text-secondary small">No notifications yet.</div>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        data.notifications.forEach(n => {
+                            let bgClass = n.is_read ? '' : 'bg-primary bg-opacity-10';
+                            let icon = n.type === 'INVITE' ? 'calendar-plus' : (n.type === 'REMINDER' ? 'clock' : 'info');
+                            let iconColor = n.type === 'INVITE' ? 'text-primary' : (n.type === 'REMINDER' ? 'text-warning' : 'text-info');
+                            
+                            html += `
+                                <div class="p-3 border-bottom border-secondary border-opacity-25 notification-item ${bgClass}" data-id="${n.id}" data-meeting="${n.meeting_id || ''}" style="cursor: pointer;">
+                                    <div class="d-flex gap-3 align-items-start">
+                                        <div class="mt-1 ${iconColor}">
+                                            <i data-lucide="${icon}" style="width:20px;height:20px;"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <p class="mb-1 text-white small" style="line-height: 1.4;">${n.message}</p>
+                                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                                <small class="text-secondary" style="font-size:0.7rem;">${n.created_at}</small>
+                                                ${!n.is_read ? `<span class="badge bg-primary" style="font-size:0.6rem;">New</span>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        notifList.innerHTML = html;
+                        lucide.createIcons();
+                        
+                        document.querySelectorAll('.notification-item').forEach(item => {
+                            item.addEventListener('click', function(e) {
+                                let id = this.getAttribute('data-id');
+                                let meetingId = this.getAttribute('data-meeting');
+                                
+                                // Mark as read
+                                fetch(`/notifications/mark-read/${id}/`)
+                                    .then(r => r.json())
+                                    .then(d => {
+                                        if (d.status === 'success') {
+                                            if (meetingId) {
+                                                window.location.href = '/mom/' + meetingId + '/';
+                                            } else {
+                                                fetchNotifications();
+                                                fetchUnreadCount();
+                                            }
+                                        }
+                                    });
+                            });
+                        });
+                    }
+                });
+        }
+
+        notifDropdownToggle.addEventListener('show.bs.dropdown', function () {
+            fetchNotifications();
+        });
+
+        // Real-time polling every 5 seconds
+        setInterval(fetchUnreadCount, 5000);
+    });
+    </script>
+    <!-- Bootstrap JS needed for dropdown -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% endif %}
+</body>
+</html>
