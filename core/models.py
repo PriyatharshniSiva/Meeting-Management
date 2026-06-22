@@ -53,7 +53,15 @@ class Participant(models.Model):
     attendance_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
 
 class MeetingMinutes(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending Transcript'),
+        ('PROCESSING', 'Processing Transcript'),
+        ('GENERATING', 'Generating AI Summary'),
+        ('READY', 'Minutes Ready'),
+        ('NO_TRANSCRIPT', 'No Transcript Available'),
+    )
     meeting = models.OneToOneField(Meeting, on_delete=models.CASCADE, related_name='minutes')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     notes = models.TextField()
     history = models.TextField(blank=True, null=True)
     attachment = models.FileField(upload_to='mom_attachments/', blank=True, null=True)
@@ -61,6 +69,8 @@ class MeetingMinutes(models.Model):
     decisions = models.JSONField(default=list, blank=True)
     action_items_raw = models.JSONField(default=list, blank=True)
     agenda = models.TextField(blank=True, null=True)
+    pdf_export = models.FileField(upload_to='exports/pdf/', blank=True, null=True)
+    docx_export = models.FileField(upload_to='exports/docx/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class ActionItem(models.Model):

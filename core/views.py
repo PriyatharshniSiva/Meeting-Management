@@ -270,7 +270,40 @@ def calendar_view(request):
 
 @login_required
 def attendance_view(request):
-    return render(request, 'attendance.html')
+    from core.models import Participant
+    if request.user.role == 'ADMIN':
+        participants = Participant.objects.all().order_by('-meeting__date', '-meeting__time')
+    else:
+        participants = Participant.objects.filter(user=request.user).order_by('-meeting__date', '-meeting__time')
+        
+    total = participants.count()
+    present = participants.filter(attendance_status='ATTENDED').count()
+    absent = participants.filter(attendance_status='ABSENT').count()
+    late = participants.filter(attendance_status='LATE').count()
+    
+    return render(request, 'attendance.html', {
+        'participants': participants,
+        'total': total,
+        'present': present,
+        'absent': absent,
+        'late': late,
+    })
+
+@login_required
+def update_attendance(request, participant_id):
+    if request.method == 'POST' and request.user.role == 'ADMIN':
+        from core.models import Participant
+        from django.contrib import messages
+        try:
+            p = Participant.objects.get(id=participant_id)
+            new_status = request.POST.get('status')
+            if new_status in dict(Participant._meta.get_field('attendance_status').choices):
+                p.attendance_status = new_status
+                p.save()
+                messages.success(request, f"Updated attendance for {p.user.username}.")
+        except Participant.DoesNotExist:
+            messages.error(request, "Participant not found.")
+    return redirect('attendance')
 
 @login_required
 def mom_view(request, meeting_id=None):
@@ -312,44 +345,7 @@ def mom_view(request, meeting_id=None):
         from django.shortcuts import get_object_or_404
         selected_meeting = get_object_or_404(Meeting, id=meeting_id)
         
-        # Handle File Upload
-        if request.method == 'POST' and 'transcript_file' in request.FILES:
-            from django.contrib import messages
-            uploaded_file = request.FILES['transcript_file']
-            
-            # Read file content
-            content = uploaded_file.read().decode('utf-8', errors='ignore').splitlines()
-            
-            parsed_lines = []
-            for line in content:
-                line = line.strip()
-                if not line or line.isdigit() or '-->' in line or line.startswith('WEBVTT'):
-                    continue
-                
-                # Simple parsing: "John Doe: Hello world"
-                if ':' in line and len(line.split(':', 1)[0]) < 25:
-                    parts = line.split(':', 1)
-                    parsed_lines.append({
-                        'speaker': parts[0].strip(),
-                        'text': parts[1].strip()
-                    })
-                else:
-                    parsed_lines.append({'speaker': 'Speaker', 'text': line})
-            
-            # Save to Database
-            minutes, created = MeetingMinutes.objects.get_or_create(meeting=selected_meeting)
-            minutes.attachment = uploaded_file
-            minutes.history = json.dumps(parsed_lines)
-            minutes.save()
-            messages.success(request, "Transcript uploaded and parsed successfully!")
-            return redirect('mom_detail', meeting_id=meeting_id)
-            
-        # Try to load existing parsed transcript
-        if hasattr(selected_meeting, 'minutes') and selected_meeting.minutes and selected_meeting.minutes.history:
-            try:
-                transcript_lines = json.loads(selected_meeting.minutes.history)
-            except:
-                transcript_lines = []
+        minutes, _ = MeetingMinutes.objects.get_or_create(meeting=selected_meeting)
                 
         # Calculate if currently ongoing
         start_dt = datetime.datetime.combine(selected_meeting.date, selected_meeting.time)
@@ -363,12 +359,25 @@ def mom_view(request, meeting_id=None):
         now = timezone.localtime(timezone.now())
         if start_dt <= now <= end_dt:
             is_ongoing = True
+            
+        # Try to load existing parsed transcript
+        if minutes.history:
+            try:
+                transcript_lines = json.loads(minutes.history)
+            except:
+                transcript_lines = []
+        else:
+            # If the meeting ended and no transcript was recorded
+            if not is_ongoing and minutes.status == 'PENDING':
+                minutes.status = 'NO_TRANSCRIPT'
+                minutes.save()
 
     return render(request, 'mom.html', {
         'meetings': meetings,
         'selected_meeting': selected_meeting,
         'transcript_lines': transcript_lines,
-        'is_ongoing': is_ongoing
+        'is_ongoing': is_ongoing,
+        'minutes': selected_meeting.minutes if selected_meeting and hasattr(selected_meeting, 'minutes') else None
     })
 
 @login_required
@@ -506,57 +515,145 @@ def set_new_password_view(request):
 
 @login_required
 def generate_summary(request, meeting_id):
-    from core.models import Meeting, MeetingMinutes, ActionItem
+    from core.models import Meeting, MeetingMinutes, ActionItem, CustomUser
     from django.shortcuts import get_object_or_404, redirect
     from django.contrib import messages
     import json
+    import os
+    import google.generativeai as genai
     
     meeting = get_object_or_404(Meeting, id=meeting_id)
     if not hasattr(meeting, 'minutes') or not meeting.minutes.history:
-        messages.error(request, "No transcript available to summarize.")
-        return redirect('mom_detail', meeting_id=meeting_id)
+        return JsonResponse({'status': 'error', 'message': "No transcript available to summarize."})
         
     minutes = meeting.minutes
+    minutes.status = 'GENERATING'
+    minutes.save()
+    
     try:
         transcript_lines = json.loads(minutes.history)
     except:
         transcript_lines = []
         
-    decisions = []
-    action_items = []
+    transcript_text = "\n".join([f"{t.get('speaker', 'Unknown')}: {t.get('text', '')}" for t in transcript_lines])
     
-    decision_keywords = ['decided', 'agreed', 'approved', 'finalized', 'decision', 'concluded']
-    action_keywords = ['will do', 'assign', 'task', 'needs to', 'should do', 'action item', 'i will', 'must']
-    
-    for line in transcript_lines:
-        text = line.get('text', '')
-        text_lower = text.lower()
-        speaker = line.get('speaker', 'Unknown')
+    # Check if we have anything to summarize
+    if len(transcript_text.strip()) < 10:
+        minutes.status = 'NO_TRANSCRIPT'
+        minutes.save()
+        return JsonResponse({'status': 'error', 'message': "Transcript is too short."})
         
-        for dk in decision_keywords:
-            if dk in text_lower:
-                decisions.append(text)
-                break
-                
-        for ak in action_keywords:
-            if ak in text_lower:
-                action_items.append({
-                    "task": text,
-                    "owner": speaker
-                })
-                break
-                
-    summary = f"Meeting '{meeting.title}' discussed various topics. The team covered {len(transcript_lines)} points of dialogue."
-    if decisions:
-        summary += f" Key decisions included {len(decisions)} major agreements."
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        minutes.status = 'PENDING'
+        minutes.save()
+        return JsonResponse({'status': 'error', 'message': "GEMINI_API_KEY is not configured in .env"})
         
-    minutes.ai_summary = summary
-    minutes.decisions = decisions
-    minutes.action_items_raw = action_items
-    minutes.save()
+    genai.configure(api_key=api_key)
     
-    messages.success(request, "AI Summary generated successfully!")
-    return redirect('mom_detail', meeting_id=meeting_id)
+    prompt = f"""
+    You are an expert executive assistant. Review the following meeting transcript.
+    Extract the following structured information and return it EXACTLY as a valid JSON object without markdown formatting blocks (do not wrap in ```json).
+    {{
+        "Summary": "A concise paragraph summarizing the overall meeting.",
+        "Discussion_Points": ["Point 1", "Point 2"],
+        "Decisions_Taken": ["Decision 1", "Decision 2"],
+        "Action_Items": [
+            {{"task": "Task description", "owner": "Assigned Person", "due_date": "YYYY-MM-DD or None"}}
+        ]
+    }}
+    
+    Transcript:
+    {transcript_text}
+    """
+    
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        result_text = response.text.strip()
+        
+        if result_text.startswith("```json"):
+            result_text = result_text[7:]
+        if result_text.endswith("```"):
+            result_text = result_text[:-3]
+            
+        parsed = json.loads(result_text)
+        
+        # Format the discussion points into the AI summary text
+        summary = parsed.get("Summary", "No summary provided.")
+        discussion_pts = parsed.get("Discussion_Points", [])
+        if discussion_pts:
+            summary += "\n\n### Discussion Points\n- " + "\n- ".join(discussion_pts)
+            
+        minutes.ai_summary = summary
+        minutes.decisions = parsed.get("Decisions_Taken", [])
+        minutes.action_items_raw = parsed.get("Action_Items", [])
+        minutes.save()
+        
+        # Optional: Auto-create Action Items in DB
+        for item in minutes.action_items_raw:
+            owner_str = item.get("owner", "")
+            # Try to map owner to existing user
+            owner_user = CustomUser.objects.filter(username__icontains=owner_str).first()
+            if owner_user:
+                ActionItem.objects.create(
+                    meeting=meeting,
+                    task_name=item.get("task", "New Task")[:255],
+                    description=item.get("task", ""),
+                    assigned_to=owner_user,
+                    due_date=meeting.date # Fallback to meeting date
+                )
+        
+        # Now automatically generate exports and save to FileFields
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        import docx
+        
+        # PDF Generation
+        try:
+            pdf_buffer = BytesIO()
+            p = canvas.Canvas(pdf_buffer, pagesize=letter)
+            p.drawString(100, 750, f"Transcript: {meeting.title}")
+            y = 730
+            for line in transcript_lines:
+                if y < 50:
+                    p.showPage()
+                    y = 750
+                text = f"{line.get('speaker')}: {line.get('text')}"
+                p.drawString(100, y, text[:90])
+                y -= 15
+            p.showPage()
+            p.save()
+            pdf_buffer.seek(0)
+            minutes.pdf_export.save(f'transcript_{meeting.id}.pdf', ContentFile(pdf_buffer.read()), save=False)
+        except Exception as e:
+            print("Error generating PDF:", e)
+            
+        # DOCX Generation
+        try:
+            doc = docx.Document()
+            doc.add_heading(f"Transcript: {meeting.title}", 0)
+            for line in transcript_lines:
+                p_doc = doc.add_paragraph()
+                p_doc.add_run(f"{line.get('speaker')}: ").bold = True
+                p_doc.add_run(f"{line.get('text')}")
+            docx_buffer = BytesIO()
+            doc.save(docx_buffer)
+            docx_buffer.seek(0)
+            minutes.docx_export.save(f'transcript_{meeting.id}.docx', ContentFile(docx_buffer.read()), save=False)
+        except Exception as e:
+            print("Error generating DOCX:", e)
+            
+        minutes.status = 'READY'
+        minutes.save()
+        
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        minutes.status = 'PENDING'
+        minutes.save()
+        return JsonResponse({'status': 'error', 'message': str(e)})
 
 @login_required
 def export_pdf(request, meeting_id):
@@ -590,6 +687,52 @@ def export_pdf(request, meeting_id):
             
     p.showPage()
     p.save()
+    return response
+
+@login_required
+def download_transcript(request, meeting_id):
+    from django.http import HttpResponse
+    from core.models import Meeting
+    import json
+    
+    meeting = Meeting.objects.get(id=meeting_id)
+    response = HttpResponse(content_type='text/plain')
+    response['Content-Disposition'] = f'attachment; filename="transcript_{meeting.id}.txt"'
+    
+    if hasattr(meeting, 'minutes') and meeting.minutes.history:
+        try:
+            lines = json.loads(meeting.minutes.history)
+            for line in lines:
+                response.write(f"{line.get('speaker', 'Unknown')}: {line.get('text', '')}\n")
+        except Exception as e:
+            response.write(f"Error parsing transcript: {e}")
+    else:
+        response.write("No transcript available.")
+        
+    return response
+
+@login_required
+def download_ai_summary(request, meeting_id):
+    from django.http import HttpResponse
+    from core.models import Meeting
+    import json
+    
+    meeting = Meeting.objects.get(id=meeting_id)
+    response = HttpResponse(content_type='application/json')
+    response['Content-Disposition'] = f'attachment; filename="ai_summary_{meeting.id}.json"'
+    
+    if hasattr(meeting, 'minutes'):
+        data = {
+            "title": meeting.title,
+            "date": str(meeting.date),
+            "summary": meeting.minutes.ai_summary,
+            "decisions": meeting.minutes.decisions,
+            "action_items": meeting.minutes.action_items_raw
+        }
+        response.write(json.dumps(data, indent=4))
+    else:
+        response.write(json.dumps({"error": "No minutes available."}))
+        
     return response
 
 @login_required

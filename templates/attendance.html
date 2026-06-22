@@ -32,84 +32,22 @@
     <div class="col-md-4">
         <div class="glass-card bg-gradient-blue hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="users"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Total Participants</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ total }}</h3><span class="small text-white opacity-75">Total Records</span></div>
         </div>
     </div>
     <!-- 2. Present -->
     <div class="col-md-4">
         <div class="glass-card bg-gradient-green hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none; background: linear-gradient(135deg, #16A34A 0%, #22C55E 100%);">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="check-circle"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Present</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ present }}</h3><span class="small text-white opacity-75">Attended</span></div>
         </div>
     </div>
     <!-- 3. Absent -->
     <div class="col-md-4">
         <div class="glass-card bg-gradient-red hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="x-circle"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Absent</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ absent }}</h3><span class="small text-white opacity-75">Absent</span></div>
         </div>
-    </div>
-</div>
-
-<!-- Meeting Attendance Summary Row -->
-<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.2s;">
-    <!-- Summary -->
-    <div class="col-12">
-        <div class="glass-card hover-card">
-            <h5 class="text-white mb-4 d-flex align-items-center gap-2"><i data-lucide="clipboard-list" class="icon-blue"></i> Meeting Summary</h5>
-            
-            <div class="p-3 rounded mb-4" style="background: rgba(0,0,0,0.2);">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h4 class="text-white fw-bold mb-1">Sprint Planning Q3</h4>
-                        <small class="text-secondary d-flex align-items-center gap-1"><i data-lucide="calendar" style="width:12px;"></i> Today • 09:00 AM - 10:30 AM (90m)</small>
-                    </div>
-                    <span class="badge bg-success bg-opacity-25 text-success rounded-pill border border-success">Ongoing</span>
-                </div>
-                
-                <div class="d-flex justify-content-between text-white mb-2">
-                    <span>Attendance Score</span>
-                    <span class="fw-bold text-success">92%</span>
-                </div>
-                <div class="progress bg-dark mb-2" style="height: 12px; border-radius: 6px;">
-                    <div class="progress-bar bg-success" style="width: 70%;" title="Present: 70%"></div>
-                    <div class="progress-bar bg-warning" style="width: 22%;" title="Late: 22%"></div>
-                    <div class="progress-bar bg-danger" style="width: 8%;" title="Absent: 8%"></div>
-                </div>
-                <div class="d-flex justify-content-between small text-secondary">
-                    <span><i class="text-success">●</i> Present (84)</span>
-                    <span><i class="text-warning">●</i> Late (26)</span>
-                    <span><i class="text-danger">●</i> Absent (10)</span>
-                </div>
-            </div>
-            
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary flex-grow-1">Export PDF</button>
-                <button class="btn btn-outline-secondary flex-grow-1" onclick="sendReminders(this)">Send Reminders</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Search & Filters -->
-<div class="glass-card mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3 page-transition" style="animation-delay: 0.3s;">
-    <div class="d-flex flex-grow-1 align-items-center gap-3">
-        <div class="position-relative flex-grow-1" style="max-width: 400px;">
-            <i data-lucide="search" class="position-absolute text-secondary" style="top:50%; transform:translateY(-50%); left:15px; width:18px;"></i>
-            <input type="text" class="form-control glass-input text-white rounded-pill w-100" placeholder="Search employees by name, role, dept..." style="padding-left: 45px;">
-        </div>
-        <!-- Filter Chips -->
-        <div class="d-none d-lg-flex gap-2">
-            <span class="filter-chip" style="color:var(--success); background:rgba(34,197,94,0.15); border-color:rgba(34,197,94,0.3);">Present <button style="color:var(--success);"><i data-lucide="x" style="width:12px;"></i></button></span>
-            <span class="filter-chip" style="color:var(--warning); background:rgba(245,158,11,0.15); border-color:rgba(245,158,11,0.3);">Late <button style="color:var(--warning);"><i data-lucide="x" style="width:12px;"></i></button></span>
-        </div>
-    </div>
-    <div class="d-flex gap-2 align-items-center">
-        <select class="form-select glass-input text-white rounded-pill w-auto px-4 d-none d-md-block">
-            <option class="bg-dark" selected>Meeting: Sprint Planning Q3</option>
-            <option class="bg-dark">Client Demo</option>
-        </select>
-        <button class="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center gap-1 px-3 hover-card"><i data-lucide="filter" style="width:14px;"></i> Filters</button>
     </div>
 </div>
 
@@ -119,204 +57,65 @@
         <table class="table table-hover mb-0 bg-transparent align-middle" style="color: var(--text-primary);">
             <thead style="background: var(--nav-hover-bg);">
                 <tr>
-                    <th class="border-0 text-secondary fw-normal py-3 ps-4">Employee Name</th>
-                    <th class="border-0 text-secondary fw-normal py-3">Role / Dept</th>
-                    <th class="border-0 text-secondary fw-normal py-3">Check-In</th>
-                    <th class="border-0 text-secondary fw-normal py-3">Attendance %</th>
-                    <th class="border-0 text-secondary fw-normal py-3">Status</th>
+                    <th class="border-0 text-secondary fw-normal py-3 ps-4">User</th>
+                    <th class="border-0 text-secondary fw-normal py-3">Role</th>
+                    <th class="border-0 text-secondary fw-normal py-3">Meeting</th>
+                    <th class="border-0 text-secondary fw-normal py-3">Attendance</th>
+                    <th class="border-0 text-secondary fw-normal py-3">RSVP Status</th>
                     <th class="border-0 text-secondary fw-normal py-3 text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody class="border-top-0">
-                <!-- Row 1 -->
+                {% for p in participants %}
                 <tr>
                     <td class="border-bottom py-3 ps-4">
                         <div class="d-flex align-items-center gap-3">
-                            <img src="https://ui-avatars.com/api/?name=Rahul+Kumar&background=3B82F6&color=fff&rounded=true" alt="Rahul" width="40" height="40" class="rounded-circle border border-primary">
+                            <img src="https://ui-avatars.com/api/?name={{ p.user.username }}&background=3B82F6&color=fff&rounded=true" alt="{{ p.user.username }}" width="40" height="40" class="rounded-circle border border-primary">
                             <div>
-                                <strong class="text-white d-block">Rahul Kumar</strong>
-                                <small class="text-secondary">EMP-001</small>
+                                <strong class="text-white d-block">{{ p.user.username }}</strong>
+                                <small class="text-secondary">{{ p.user.email }}</small>
                             </div>
                         </div>
                     </td>
-                    <td class="border-bottom py-3 text-white">Lead Engineer<br><small class="text-secondary">Engineering</small></td>
-                    <td class="border-bottom py-3 text-white">08:55 AM<br><small class="text-success">On Time</small></td>
+                    <td class="border-bottom py-3 text-white">{{ p.user.role }}</td>
+                    <td class="border-bottom py-3 text-white">{{ p.meeting.title }}<br><small class="text-secondary">{{ p.meeting.date }} {{ p.meeting.time }}</small></td>
                     <td class="border-bottom py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="progress flex-grow-1 bg-dark" style="height:6px;"><div class="progress-bar bg-success" style="width: 98%"></div></div>
-                            <span class="text-white small">98%</span>
-                        </div>
+                        <span class="badge 
+                            {% if p.attendance_status == 'ATTENDED' %}bg-success
+                            {% elif p.attendance_status == 'LATE' %}bg-warning
+                            {% elif p.attendance_status == 'ABSENT' %}bg-danger
+                            {% else %}bg-secondary{% endif %} bg-opacity-25 
+                            text-{% if p.attendance_status == 'ATTENDED' %}success{% elif p.attendance_status == 'LATE' %}warning{% elif p.attendance_status == 'ABSENT' %}danger{% else %}secondary{% endif %} 
+                            rounded-pill px-3">{{ p.get_attendance_status_display }}</span>
                     </td>
-                    <td class="border-bottom py-3"><span class="badge bg-success bg-opacity-25 text-success rounded-pill border border-success px-3">Present</span></td>
+                    <td class="border-bottom py-3"><span class="badge bg-secondary bg-opacity-25 text-white rounded-pill px-3">{{ p.get_rsvp_status_display }}</span></td>
                     <td class="border-bottom py-3 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Mark Absent"><i data-lucide="x-circle" style="width:18px;"></i></button>
+                        {% if request.user.role == 'ADMIN' %}
+                        <form method="POST" action="{% url 'update_attendance' p.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <select name="status" onchange="this.form.submit()" class="form-select form-select-sm glass-input d-inline-block w-auto">
+                                <option value="PENDING" {% if p.attendance_status == 'PENDING' %}selected{% endif %}>Pending</option>
+                                <option value="ATTENDED" {% if p.attendance_status == 'ATTENDED' %}selected{% endif %}>Attended</option>
+                                <option value="LATE" {% if p.attendance_status == 'LATE' %}selected{% endif %}>Late</option>
+                                <option value="ABSENT" {% if p.attendance_status == 'ABSENT' %}selected{% endif %}>Absent</option>
+                            </select>
+                        </form>
+                        {% else %}
+                            <span class="text-secondary small">Read-Only</span>
+                        {% endif %}
                     </td>
                 </tr>
-                <!-- Row 2 -->
+                {% empty %}
                 <tr>
-                    <td class="border-bottom py-3 ps-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <img src="https://ui-avatars.com/api/?name=Priya+Singh&background=8B5CF6&color=fff&rounded=true" alt="Priya" width="40" height="40" class="rounded-circle border border-purple">
-                            <div>
-                                <strong class="text-white d-block">Priya Singh</strong>
-                                <small class="text-secondary">EMP-042</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-3 text-white">Product Manager<br><small class="text-secondary">Product</small></td>
-                    <td class="border-bottom py-3 text-white">09:15 AM<br><small class="text-warning">+15m</small></td>
-                    <td class="border-bottom py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="progress flex-grow-1 bg-dark" style="height:6px;"><div class="progress-bar bg-warning" style="width: 82%"></div></div>
-                            <span class="text-white small">82%</span>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-3"><span class="badge bg-warning bg-opacity-25 text-warning rounded-pill border border-warning px-3">Late</span></td>
-                    <td class="border-bottom py-3 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Mark Absent"><i data-lucide="x-circle" style="width:18px;"></i></button>
-                    </td>
+                    <td colspan="6" class="text-center py-4 text-secondary">No attendance records found.</td>
                 </tr>
-                <!-- Row 3 -->
-                <tr>
-                    <td class="border-bottom py-3 ps-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <img src="https://ui-avatars.com/api/?name=John+Doe&background=EF4444&color=fff&rounded=true" alt="John" width="40" height="40" class="rounded-circle border border-danger">
-                            <div>
-                                <strong class="text-white d-block">John Doe</strong>
-                                <small class="text-secondary">EMP-088</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-3 text-white">UX Designer<br><small class="text-secondary">Design</small></td>
-                    <td class="border-bottom py-3 text-white">--<br><small class="text-danger">No Scan</small></td>
-                    <td class="border-bottom py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="progress flex-grow-1 bg-dark" style="height:6px;"><div class="progress-bar bg-danger" style="width: 65%"></div></div>
-                            <span class="text-white small">65%</span>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-3"><span class="badge bg-danger bg-opacity-25 text-danger rounded-pill border border-danger px-3">Absent</span></td>
-                    <td class="border-bottom py-3 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-success border-0 hover-white" title="Mark Present"><i data-lucide="check-circle" style="width:18px;"></i></button>
-                    </td>
-                </tr>
-                <!-- Row 4 -->
-                <tr>
-                    <td class="border-0 py-3 ps-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <img src="https://ui-avatars.com/api/?name=Sarah+Lee&background=06B6D4&color=fff&rounded=true" alt="Sarah" width="40" height="40" class="rounded-circle border border-cyan">
-                            <div>
-                                <strong class="text-white d-block">Sarah Lee</strong>
-                                <small class="text-secondary">EMP-102</small>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="border-0 py-3 text-white">Data Analyst<br><small class="text-secondary">Data</small></td>
-                    <td class="border-0 py-3 text-white">Online<br><small class="text-info">Zoom Auth</small></td>
-                    <td class="border-0 py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="progress flex-grow-1 bg-dark" style="height:6px;"><div class="progress-bar bg-cyan" style="width: 95%"></div></div>
-                            <span class="text-white small">95%</span>
-                        </div>
-                    </td>
-                    <td class="border-0 py-3"><span class="badge bg-info bg-opacity-25 text-info rounded-pill border border-info px-3">Remote</span></td>
-                    <td class="border-0 py-3 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Mark Absent"><i data-lucide="x-circle" style="width:18px;"></i></button>
-                    </td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- QR Module & Live Feed -->
-<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.5s;">
-    <!-- Auto-Attendance Module -->
-    <div class="col-lg-5">
-        <div class="glass-card h-100 hover-card text-center d-flex flex-column align-items-center justify-content-center p-4">
-            <h5 class="text-white mb-2 d-flex align-items-center gap-2"><i data-lucide="cpu" class="icon-blue"></i> AI Auto-Attendance</h5>
-            <p class="text-secondary small mb-4">Automatically detecting presence via integrations</p>
-            
-            <div class="d-flex flex-column gap-3 w-100 mb-4">
-                <div class="p-3 rounded border border-success border-opacity-25 text-start" style="background: rgba(34,197,94,0.05);">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <strong class="text-white d-flex align-items-center gap-2"><i data-lucide="video" class="icon-green" style="width:16px;"></i> Zoom Webhook</strong>
-                        <span class="badge bg-success bg-opacity-25 text-success rounded-pill pulse-ring" style="box-shadow:none;">Active</span>
-                    </div>
-                    <small class="text-secondary">Syncing participant join/leave events</small>
-                </div>
-                <div class="p-3 rounded border border-primary border-opacity-25 text-start" style="background: rgba(59,130,246,0.05);">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <strong class="text-white d-flex align-items-center gap-2"><i data-lucide="map-pin" class="icon-blue" style="width:16px;"></i> Geolocation Check</strong>
-                        <span class="badge bg-primary bg-opacity-25 text-primary rounded-pill pulse-ring" style="box-shadow:none;">Scanning</span>
-                    </div>
-                    <small class="text-secondary">Verifying network proximity for offline meeting</small>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Live Monitoring Feed -->
-    <div class="col-lg-7">
-        <div class="glass-card h-100">
-            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
-                <h5 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="radio" class="icon-green pulse-ring" style="box-shadow:none;"></i> Live Monitoring Feed</h5>
-                <span class="badge bg-success bg-opacity-25 text-success rounded-pill border border-success">Auto-Sync On</span>
-            </div>
-            
-            <div class="d-flex flex-column gap-3 overflow-auto" style="max-height: 300px;">
-                <!-- Feed Item -->
-                <div class="d-flex align-items-center justify-content-between p-2 rounded hover-card" style="background: rgba(34, 197, 94, 0.05); border-left: 3px solid var(--success);">
-                    <div class="d-flex align-items-center gap-3">
-                        <img src="https://ui-avatars.com/api/?name=M+R&background=06B6D4&color=fff" width="32" height="32" class="rounded-circle">
-                        <div>
-                            <strong class="text-white d-block text-sm">Mike Ross scanned QR Code</strong>
-                            <small class="text-secondary">Marked Present</small>
-                        </div>
-                    </div>
-                    <small class="text-secondary">Just now</small>
-                </div>
-                <!-- Feed Item -->
-                <div class="d-flex align-items-center justify-content-between p-2 rounded hover-card" style="background: rgba(245, 158, 11, 0.05); border-left: 3px solid var(--warning);">
-                    <div class="d-flex align-items-center gap-3">
-                        <img src="https://ui-avatars.com/api/?name=H+S&background=F59E0B&color=fff" width="32" height="32" class="rounded-circle">
-                        <div>
-                            <strong class="text-white d-block text-sm">Harvey Specter scanned QR Code</strong>
-                            <small class="text-warning">Marked Late (+5m)</small>
-                        </div>
-                    </div>
-                    <small class="text-secondary">5m ago</small>
-                </div>
-                <!-- Feed Item -->
-                <div class="d-flex align-items-center justify-content-between p-2 rounded hover-card" style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid var(--primary);">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar bg-primary text-white" style="width:32px;height:32px;"><i data-lucide="edit" style="width:14px;"></i></div>
-                        <div>
-                            <strong class="text-white d-block text-sm">Admin manually updated attendance</strong>
-                            <small class="text-secondary">Changed John Doe to Present</small>
-                        </div>
-                    </div>
-                    <small class="text-secondary">15m ago</small>
-                </div>
-                 <!-- Feed Item -->
-                 <div class="d-flex align-items-center justify-content-between p-2 rounded hover-card" style="background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--danger);">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar bg-danger text-white" style="width:32px;height:32px;"><i data-lucide="alert-circle" style="width:14px;"></i></div>
-                        <div>
-                            <strong class="text-white d-block text-sm">Threshold Warning!</strong>
-                            <small class="text-danger">3 participants are still missing</small>
-                        </div>
-                    </div>
-                    <small class="text-secondary">20m ago</small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 
 

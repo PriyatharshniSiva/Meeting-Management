@@ -2,8 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dashboard_view, name='dashboard'),
+    path('', views.login_view, name='root_login'),
     path('login/', views.login_view, name='login'),
+    path('dashboard/', views.dashboard_view, name='dashboard'),
     path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
     
@@ -13,6 +14,7 @@ urlpatterns = [
     path('meeting/delete/<int:meeting_id>/', views.delete_meeting_view, name='delete_meeting'),
     path('calendar/', views.calendar_view, name='calendar'),
     path('attendance/', views.attendance_view, name='attendance'),
+    path('attendance/update/<int:participant_id>/', views.update_attendance, name='update_attendance'),
     path('mom/', views.mom_view, name='mom'),
     path('mom/<int:meeting_id>/', views.mom_view, name='mom_detail'),
     path('mom/autosave/<int:meeting_id>/', views.autosave_transcript, name='autosave_transcript'),
@@ -27,6 +29,9 @@ urlpatterns = [
     path('mom/export/pdf/<int:meeting_id>/', views.export_pdf, name='export_pdf'),
     path('mom/export/docx/<int:meeting_id>/', views.export_docx, name='export_docx'),
     path('mom/export/txt/<int:meeting_id>/', views.export_txt, name='export_txt'),
+    path('mom/download/transcript/<int:meeting_id>/', views.download_transcript, name='download_transcript'),
+    path('mom/download/ai_summary/<int:meeting_id>/', views.download_ai_summary, name='download_ai_summary'),
+    
     path('tasks/', views.tasks_view, name='tasks'),
     path('reports/', views.reports_view, name='reports'),
     path('ai-features/', views.ai_features_view, name='ai_features'),
