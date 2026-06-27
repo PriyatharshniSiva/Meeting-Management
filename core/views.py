@@ -49,12 +49,38 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    total_meetings = Meeting.objects.count()
-    upcoming_meetings = Meeting.objects.count() # placeholder for now
-    completed_meetings = Meeting.objects.count() # placeholder
+    from django.utils import timezone
+    import datetime
+    
+    now = timezone.now()
+    
+    all_meetings = Meeting.objects.all()
+    total_meetings = all_meetings.count()
+    upcoming_meetings = 0
+    completed_meetings = 0
+    
+    for m in all_meetings:
+        try:
+            m_dt_naive = datetime.datetime.combine(m.date, m.time)
+            m_dt = timezone.make_aware(m_dt_naive)
+            if m_dt > now:
+                upcoming_meetings += 1
+            else:
+                completed_meetings += 1
+        except:
+            pass
     
     pending_tasks = ActionItem.objects.filter(status='PENDING').count()
-    overdue_tasks = 0 # placeholder
+    overdue_tasks = 0
+    for task in ActionItem.objects.filter(status='PENDING'):
+        if task.due_date:
+            try:
+                task_dt = datetime.datetime.combine(task.due_date, datetime.time.min)
+                task_dt = timezone.make_aware(task_dt)
+                if task_dt < now:
+                    overdue_tasks += 1
+            except:
+                pass
     
     from core.models import Participant, MeetingMinutes
     total_invites = Participant.objects.count()
@@ -104,6 +130,18 @@ def meetings_view(request):
             messages.error(request, "Please provide a valid Date and Time format.")
             return redirect('meetings')
             
+        # --- START ZOOM INTEGRATION ---
+        if m_type == 'ONLINE':
+            from core.zoom_api import ZoomAPI
+            start_time_iso = f"{date}T{time}Z"  # Simplified ISO string for mock
+            zoom_meeting = ZoomAPI.create_meeting(title, duration, start_time_iso)
+            meeting_link = zoom_meeting['join_url']
+            
+            # We could store the zoom ID in the meeting model, but for now we'll put it in the link
+            # or append it to the description
+            desc += f"\n\n--- Zoom Meeting ID: {zoom_meeting['id']} ---"
+        # --- END ZOOM INTEGRATION ---
+        
         meeting = Meeting.objects.create(
             title=title, date=date, time=time, 
             duration=duration, meeting_type=m_type, 
@@ -177,12 +215,8 @@ def meetings_view(request):
             m_dt_naive = datetime.datetime.combine(m.date, m.time)
             m_dt = timezone.make_aware(m_dt_naive)
             
-            # Delete instantly when start time is reached
-            if m_dt > now:
-                meetings_list.append(m)
-            else:
-                # The user explicitly wants it removed from the system
-                m.delete()
+            # Just append the meeting to the list without deleting it
+            meetings_list.append(m)
         except Exception as e:
             print(f"Error calculating end_time for meeting {m.id}: {e}")
             # Fallback if datetime combine fails for any reason
@@ -266,7 +300,84 @@ def delete_meeting_view(request, meeting_id):
 
 @login_required
 def calendar_view(request):
-    return render(request, 'calendar.html')
+    from core.models import Meeting
+    from django.utils import timezone
+    import datetime
+    import json
+    
+    now = timezone.now()
+    all_meetings = Meeting.objects.all().order_by('date', 'time')
+    
+    events = []
+    upcoming = []
+    for m in all_meetings:
+        try:
+            m_dt_naive = datetime.datetime.combine(m.date, m.time)
+            m_dt = timezone.make_aware(m_dt_naive)
+            duration = int(m.duration) if str(m.duration).isdigit() else 60
+            end_dt = m_dt + datetime.timedelta(minutes=duration)
+            
+            # Use distinct colors based on meeting type or defaults
+            class_name = 'event-primary'
+            if m.meeting_type == 'ONLINE':
+                class_name = 'event-client'
+                
+            events.append({
+                'id': m.id,
+                'title': m.title,
+                'start': m_dt.isoformat(),
+                'end': end_dt.isoformat(),
+                'classNames': [class_name],
+                'url': f"/mom/{m.id}/" if m.meeting_type == 'ONLINE' else ""
+            })
+            if m_dt > now:
+                upcoming.append(m)
+        except Exception as e:
+            pass
+            
+    today_meetings = [m for m in all_meetings if m.date == now.date()]
+    context = {
+        'events_json': json.dumps(events),
+        'upcoming_meetings': upcoming[:5],
+        'total_meetings': len(all_meetings),
+        'today_meetings': len(today_meetings),
+        'upcoming_count': len(upcoming)
+    }
+    return render(request, 'calendar.html', context)
+
+@login_required
+def update_meeting_time(request):
+    import json
+    import datetime
+    from django.http import JsonResponse
+    from core.models import Meeting
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            meeting_id = data.get('meeting_id')
+            new_datetime_str = data.get('new_datetime') # expected format: YYYY-MM-DDTHH:MM
+            
+            if not meeting_id or not new_datetime_str:
+                return JsonResponse({'status': 'error', 'message': 'Invalid data'})
+                
+            meeting = Meeting.objects.get(id=meeting_id)
+            # Only allow organizer or admin to reschedule
+            if meeting.created_by != request.user and request.user.role != 'ADMIN':
+                return JsonResponse({'status': 'error', 'message': 'Unauthorized'})
+                
+            new_dt = datetime.datetime.fromisoformat(new_datetime_str)
+            meeting.date = new_dt.date()
+            meeting.time = new_dt.time()
+            meeting.save()
+            
+            return JsonResponse({'status': 'success'})
+        except Meeting.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Meeting not found'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
 
 @login_required
 def attendance_view(request):
@@ -387,7 +498,30 @@ def tasks_view(request):
 
 @login_required
 def reports_view(request):
-    return render(request, 'reports.html')
+    from core.models import Meeting
+    from django.utils import timezone
+    import datetime
+    
+    now = timezone.now()
+    if request.user.role == 'ADMIN':
+        all_meetings = Meeting.objects.all().order_by('-date', '-time')
+    else:
+        all_meetings = Meeting.objects.filter(participants__user=request.user).order_by('-date', '-time')
+        
+    completed_meetings = []
+    
+    for m in all_meetings:
+        try:
+            m_dt_naive = datetime.datetime.combine(m.date, m.time)
+            m_dt = timezone.make_aware(m_dt_naive)
+            duration = int(m.duration) if str(m.duration).isdigit() else 60
+            end_dt = m_dt + datetime.timedelta(minutes=duration)
+            if end_dt < now:
+                completed_meetings.append(m)
+        except Exception as e:
+            pass
+            
+    return render(request, 'reports.html', {'completed_meetings': completed_meetings})
 
 @login_required
 def ai_features_view(request):
@@ -425,7 +559,245 @@ def rsvp_view(request, meeting_id):
 
 @login_required
 def settings_view(request):
+    from core.models import CustomUser
+    from django.contrib import messages
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_profile':
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            
+            if username and email:
+                if CustomUser.objects.filter(username=username).exclude(id=request.user.id).exists():
+                    messages.error(request, "Username is already taken.")
+                elif CustomUser.objects.filter(email=email).exclude(id=request.user.id).exists():
+                    messages.error(request, "Email is already in use.")
+                else:
+                    request.user.username = username
+                    request.user.email = email
+                    request.user.save()
+                    messages.success(request, "Profile updated successfully.")
+            else:
+                messages.error(request, "Username and Email cannot be empty.")
+                
+        elif action == 'update_password':
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if request.user.check_password(current_password):
+                if new_password == confirm_password:
+                    if len(new_password) >= 6:
+                        request.user.set_password(new_password)
+                        request.user.save()
+                        from django.contrib.auth import update_session_auth_hash
+                        update_session_auth_hash(request, request.user)
+                        messages.success(request, "Password updated successfully.")
+                    else:
+                        messages.error(request, "New password must be at least 6 characters.")
+                else:
+                    messages.error(request, "New passwords do not match.")
+            else:
+                messages.error(request, "Current password is incorrect.")
+                
     return render(request, 'settings.html')
+
+@login_required
+def projects_view(request):
+    from core.models import Project, ProjectAssignmentLog, CustomUser, InAppNotification
+    from django.db.models import Count, Q
+    from django.contrib import messages
+    from django.core.mail import send_mail
+    from django.conf import settings
+    from django.urls import reverse
+    import datetime
+
+    if request.method == 'POST' and request.user.role == 'ADMIN':
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        skills = request.POST.get('skills')
+        team_size = request.POST.get('team_size')
+        deadline = request.POST.get('deadline')
+        priority = request.POST.get('priority', 'MEDIUM')
+        
+        try:
+            team_size = int(team_size)
+            project = Project.objects.create(
+                name=name,
+                description=description,
+                required_skills=skills,
+                required_team_size=team_size,
+                deadline=deadline,
+                priority=priority,
+                created_by=request.user
+            )
+            
+            # Find eligible employees (TL and EMPLOYEE)
+            eligible_users = CustomUser.objects.filter(role__in=['EMPLOYEE', 'TL'])
+            
+            logs = []
+            notifications = []
+            for u in eligible_users:
+                logs.append(ProjectAssignmentLog(project=project, user=u, status='INVITED'))
+                notifications.append(InAppNotification(
+                    user=u,
+                    message=f"New Project Invitation: {project.name}. Requires {project.required_team_size} members. Accept quickly!",
+                    notification_type='PROJECT_INVITE',
+                    related_project=project
+                ))
+            
+            ProjectAssignmentLog.objects.bulk_create(logs)
+            InAppNotification.objects.bulk_create(notifications)
+            
+            # Send Email Invitations
+            subject = f"Invitation: {project.name}"
+            for u in eligible_users:
+                accept_url = request.build_absolute_uri(reverse('accept_project', args=[project.id]))
+                decline_url = request.build_absolute_uri(reverse('decline_project', args=[project.id]))
+                
+                message = f"""Hello {u.username},
+                
+You have been invited to join a new project!
+
+Project Name: {project.name}
+Description: {project.description}
+Required Skills: {project.required_skills}
+Priority: {project.get_priority_display()}
+Deadline: {project.deadline}
+
+Please review the project details and accept or decline the invitation.
+
+Accept Project: {accept_url}
+Decline Project: {decline_url}
+"""
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [u.email], fail_silently=True)
+            
+            messages.success(request, "Project created and invitations sent!")
+        except Exception as e:
+            messages.error(request, f"Error creating project: {str(e)}")
+            
+        return redirect('projects')
+        
+    context = {}
+    if request.user.role == 'ADMIN':
+        # Admin sees all their created projects with stats
+        projects = Project.objects.filter(created_by=request.user).prefetch_related('assignment_logs__user').annotate(
+            total_invites=Count('assignment_logs'),
+            accepted_count=Count('assignment_logs', filter=Q(assignment_logs__status='ACCEPTED')),
+            declined_count=Count('assignment_logs', filter=Q(assignment_logs__status='DECLINED'))
+        ).order_by('-created_at')
+        context['admin_projects'] = projects
+    else:
+        # Employees see projects they are invited to or accepted
+        logs = ProjectAssignmentLog.objects.filter(user=request.user).select_related('project').order_by('-project__created_at')
+        context['user_logs'] = logs
+
+    return render(request, 'projects.html', context)
+
+@login_required
+def accept_project(request, project_id):
+    from core.models import Project, ProjectAssignmentLog, InAppNotification
+    from django.db import transaction
+    from django.contrib import messages
+    from django.utils import timezone
+    
+    with transaction.atomic():
+        try:
+            # Lock the project row for concurrency
+            project = Project.objects.select_for_update().get(id=project_id)
+            
+            if project.status == 'TEAM_FINALIZED':
+                messages.error(request, "Project Team is already Full.")
+                return redirect('projects')
+                
+            log = ProjectAssignmentLog.objects.get(project=project, user=request.user)
+            
+            if log.status != 'INVITED':
+                messages.warning(request, f"You have already {log.status.lower()} this project.")
+                return redirect('projects')
+                
+            # Count currently accepted members
+            accepted_count = ProjectAssignmentLog.objects.filter(project=project, status='ACCEPTED').count()
+            
+            if accepted_count < project.required_team_size:
+                log.status = 'ACCEPTED'
+                log.timestamp = timezone.now()
+                log.save()
+                
+                messages.success(request, f"You have successfully joined the project: {project.name}!")
+                
+                # Notify admin immediately about this specific acceptance
+                InAppNotification.objects.create(
+                    user=project.created_by,
+                    message=f"{request.user.username} has ACCEPTED the project: {project.name}.",
+                    notification_type='PROJECT_UPDATE',
+                    related_project=project
+                )
+
+                # Check if we just filled the team
+                if accepted_count + 1 >= project.required_team_size:
+                    project.status = 'TEAM_FINALIZED'
+                    project.save()
+                    
+                    # Notify admin
+                    accepted_logs = ProjectAssignmentLog.objects.filter(project=project, status='ACCEPTED').order_by('timestamp')
+                    names_and_times = "\\n".join([f"- {l.user.username} at {l.timestamp.strftime('%Y-%m-%d %H:%M:%S')}" for l in accepted_logs])
+                    InAppNotification.objects.create(
+                        user=project.created_by,
+                        message=f"Team Finalized for project '{project.name}' (Size: {project.required_team_size}).\\nMembers:\\n{names_and_times}",
+                        notification_type='PROJECT_UPDATE',
+                        related_project=project
+                    )
+                    
+                    # Notify remaining users that the project is no longer available
+                    remaining_logs = ProjectAssignmentLog.objects.filter(project=project, status='INVITED')
+                    full_notifications = []
+                    for r_log in remaining_logs:
+                        full_notifications.append(InAppNotification(
+                            user=r_log.user,
+                            message=f"The project '{project.name}' is no longer available. The team is full.",
+                            notification_type='SYSTEM',
+                            related_project=project
+                        ))
+                    InAppNotification.objects.bulk_create(full_notifications)
+            else:
+                # Due to a race condition that wasn't caught by the first check, it's actually full
+                messages.error(request, "Project Team is already Full.")
+                
+        except Project.DoesNotExist:
+            messages.error(request, "Project not found.")
+        except ProjectAssignmentLog.DoesNotExist:
+            messages.error(request, "You are not invited to this project.")
+            
+    return redirect('projects')
+
+@login_required
+def decline_project(request, project_id):
+    from core.models import ProjectAssignmentLog, InAppNotification
+    from django.contrib import messages
+    from django.utils import timezone
+    
+    try:
+        log = ProjectAssignmentLog.objects.get(project_id=project_id, user=request.user)
+        if log.status == 'INVITED':
+            log.status = 'DECLINED'
+            log.timestamp = timezone.now()
+            log.save()
+            messages.success(request, "You have declined the project.")
+            
+            InAppNotification.objects.create(
+                user=log.project.created_by,
+                message=f"{request.user.username} has DECLINED the project: {log.project.name}.",
+                notification_type='PROJECT_UPDATE',
+                related_project=log.project
+            )
+        else:
+            messages.warning(request, "You cannot decline at this stage.")
+    except ProjectAssignmentLog.DoesNotExist:
+        messages.error(request, "You are not invited to this project.")
+        
+    return redirect('projects')
 
 def request_otp_view(request):
     if request.method == 'POST':
@@ -646,11 +1018,26 @@ def generate_summary(request, meeting_id):
         except Exception as e:
             print("Error generating DOCX:", e)
             
+        import datetime
+        from django.utils import timezone
+        now_str = timezone.now().strftime("%Y-%m-%dT%H:%M:%S")
+        current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+        current_logs.append({'timestamp': now_str, 'event': 'Summary Generated', 'type': 'success'})
+        current_logs.append({'timestamp': now_str, 'event': 'Minutes Created', 'type': 'success'})
+        minutes.processing_logs = current_logs
+            
         minutes.status = 'READY'
         minutes.save()
         
         return JsonResponse({'status': 'success'})
     except Exception as e:
+        import datetime
+        from django.utils import timezone
+        now_str = timezone.now().strftime("%Y-%m-%dT%H:%M:%S")
+        current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+        current_logs.append({'timestamp': now_str, 'event': f'Error: {str(e)}', 'type': 'error'})
+        minutes.processing_logs = current_logs
+        
         minutes.status = 'PENDING'
         minutes.save()
         return JsonResponse({'status': 'error', 'message': str(e)})
@@ -801,11 +1188,28 @@ def autosave_transcript(request, meeting_id):
             data = json.loads(request.body)
             transcript_text = data.get('transcript', '')
             mode = data.get('mode', 'replace')
+            log_event = data.get('log_event', None)
+            log_type = data.get('log_type', 'info')
+            
+            meeting = Meeting.objects.get(id=meeting_id)
+            minutes, created = MeetingMinutes.objects.get_or_create(meeting=meeting, defaults={'notes': 'Autosaved transcript'})
+            
+            if log_event:
+                import datetime
+                from django.utils import timezone
+                log_entry = {
+                    'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                    'event': log_event,
+                    'type': log_type
+                }
+                current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+                current_logs.append(log_entry)
+                minutes.processing_logs = current_logs
+                minutes.save()
+                return JsonResponse({'status': 'success'})
             
             if not transcript_text:
                 return JsonResponse({'status': 'empty'})
-                
-            meeting = Meeting.objects.get(id=meeting_id)
             
             # Parse lines simply
             lines = transcript_text.strip().split('\n')
@@ -816,8 +1220,6 @@ def autosave_transcript(request, meeting_id):
                     parsed_lines.append({'speaker': speaker.strip(), 'text': text.strip()})
                 else:
                     parsed_lines.append({'speaker': 'Unknown', 'text': line.strip()})
-                    
-            minutes, created = MeetingMinutes.objects.get_or_create(meeting=meeting, defaults={'notes': 'Autosaved transcript'})
             
             if mode == 'append':
                 existing_history = []
@@ -837,6 +1239,125 @@ def autosave_transcript(request, meeting_id):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'invalid method'})
+
+@csrf_exempt
+@login_required
+def process_audio(request, meeting_id):
+    from core.models import Meeting, MeetingMinutes
+    import json
+    import os
+    import tempfile
+    import speech_recognition as sr
+    from pydub import AudioSegment
+    import datetime
+    from django.utils import timezone
+    
+    if request.method == 'POST' and request.FILES.get('audio_blob'):
+        meeting = Meeting.objects.get(id=meeting_id)
+        minutes, created = MeetingMinutes.objects.get_or_create(meeting=meeting, defaults={'notes': 'Autosaved transcript'})
+        
+        # Log: Audio Received
+        log_entry_recv = {
+            'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            'event': 'Audio Chunk Received (Processing server-side)',
+            'type': 'info'
+        }
+        current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+        current_logs.append(log_entry_recv)
+        minutes.processing_logs = current_logs
+        minutes.save()
+        
+        try:
+            audio_blob = request.FILES['audio_blob']
+            
+            # Save raw blob to temp webm file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_webm:
+                for chunk in audio_blob.chunks():
+                    temp_webm.write(chunk)
+                temp_webm_path = temp_webm.name
+                
+            # Log: Audio Processing
+            log_entry_proc = {
+                'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                'event': 'Converting format and extracting speech...',
+                'type': 'warning'
+            }
+            current_logs.append(log_entry_proc)
+            minutes.processing_logs = current_logs
+            minutes.save()
+
+            # Convert to WAV using pydub
+            wav_path = temp_webm_path.replace('.webm', '.wav')
+            audio = AudioSegment.from_file(temp_webm_path, format="webm")
+            audio.export(wav_path, format="wav")
+            
+            # Use SpeechRecognition
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio_data = recognizer.record(source)
+                
+            try:
+                # Use Google Speech Recognition (free, no API key required)
+                text = recognizer.recognize_google(audio_data)
+                
+                if text.strip():
+                    # Parse into history
+                    parsed_lines = [{'speaker': request.user.username, 'text': text.strip()}]
+                    
+                    existing_history = []
+                    if minutes.history:
+                        try:
+                            existing_history = json.loads(minutes.history)
+                        except:
+                            pass
+                    existing_history.extend(parsed_lines)
+                    minutes.history = json.dumps(existing_history)
+                    
+                    # Log: Transcript Generated & Saved
+                    log_entry_success = {
+                        'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                        'event': f'Transcript Saved: "{text[:30]}..."',
+                        'type': 'success'
+                    }
+                    current_logs.append(log_entry_success)
+                    minutes.processing_logs = current_logs
+                    minutes.save()
+                    
+            except sr.UnknownValueError:
+                # Speech was unintelligible or empty, ignore silently
+                pass
+            except sr.RequestError as e:
+                # Log API error
+                log_entry_error = {
+                    'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                    'event': f'Transcription Error: {e}',
+                    'type': 'error'
+                }
+                current_logs.append(log_entry_error)
+                minutes.processing_logs = current_logs
+                minutes.save()
+                
+            # Cleanup temp files
+            if os.path.exists(temp_webm_path):
+                os.remove(temp_webm_path)
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+                
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            # Log critical error
+            log_entry_error = {
+                'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                'event': f'Audio Processing Error: {str(e)}',
+                'type': 'error'
+            }
+            current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+            current_logs.append(log_entry_error)
+            minutes.processing_logs = current_logs
+            minutes.save()
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'invalid request'})
 
 @login_required
 def latest_transcript(request, meeting_id):
@@ -862,10 +1383,19 @@ def latest_transcript(request, meeting_id):
         is_ongoing = start_dt <= now <= end_dt
         
         lines = []
-        if hasattr(meeting, 'minutes') and meeting.minutes and meeting.minutes.history:
-            lines = json.loads(meeting.minutes.history)
+        processing_logs = []
+        minutes_status = ''
+        if hasattr(meeting, 'minutes') and meeting.minutes:
+            minutes_status = meeting.minutes.status
+            if meeting.minutes.history:
+                try:
+                    lines = json.loads(meeting.minutes.history)
+                except:
+                    pass
+            if meeting.minutes.processing_logs:
+                processing_logs = meeting.minutes.processing_logs
             
-        return JsonResponse({'status': 'success', 'lines': lines, 'is_ongoing': is_ongoing})
+        return JsonResponse({'status': 'success', 'lines': lines, 'logs': processing_logs, 'is_ongoing': is_ongoing, 'minutes_status': minutes_status})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
 
@@ -902,3 +1432,208 @@ def mark_notification_read(request, notification_id):
         return JsonResponse({'status': 'success'})
     except InAppNotification.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Notification not found'})
+
+@csrf_exempt
+def zoom_webhook(request):
+    import json
+    import threading
+    from core.models import Meeting, MeetingMinutes, Participant, CustomUser, ActionItem, InAppNotification
+    from django.http import JsonResponse
+    from django.core.files.base import ContentFile
+    from django.core.mail import EmailMultiAlternatives
+    from django.conf import settings
+    import datetime
+    from django.utils import timezone
+    from core.zoom_api import ZoomAPI
+    
+    if request.method == 'POST':
+        try:
+            payload = json.loads(request.body)
+            event = payload.get('event')
+            
+            # Simulated Webhook Payload contains a meeting_id
+            zoom_meeting_id = payload.get('payload', {}).get('object', {}).get('id')
+            
+            if not zoom_meeting_id:
+                return JsonResponse({'status': 'ignored', 'reason': 'no meeting id'})
+                
+            # Find the meeting by checking the description for the Zoom ID
+            meeting = Meeting.objects.filter(description__icontains=zoom_meeting_id).first()
+            
+            if not meeting:
+                return JsonResponse({'status': 'ignored', 'reason': 'meeting not found in db'})
+                
+            if event == 'recording.transcript_completed':
+                minutes, _ = MeetingMinutes.objects.get_or_create(meeting=meeting)
+                minutes.status = 'PROCESSING'
+                
+                log_entry = {
+                    'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                    'event': 'Zoom Webhook: Transcript Received. Starting Automated AI Pipeline...',
+                    'type': 'success'
+                }
+                current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
+                current_logs.append(log_entry)
+                minutes.processing_logs = current_logs
+                minutes.save()
+                
+                def background_pipeline(meeting_id):
+                    from reportlab.pdfgen import canvas
+                    from reportlab.lib.pagesizes import letter
+                    import io
+                    import docx
+                    
+                    m = Meeting.objects.get(id=meeting_id)
+                    mm = m.minutes
+                    
+                    try:
+                        # 1. Fetch Mock Transcript
+                        transcript_data = ZoomAPI.get_mock_transcript(m.title)
+                        mm.history = json.dumps(transcript_data)
+                        
+                        log_entry = {'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"), 'event': 'Parsed Zoom VTT Transcript.', 'type': 'info'}
+                        current_logs = mm.processing_logs if isinstance(mm.processing_logs, list) else []
+                        current_logs.append(log_entry)
+                        mm.processing_logs = current_logs
+                        mm.save()
+                        
+                        # 2. AI Processing
+                        mm.status = 'GENERATING'
+                        mm.save()
+                        
+                        # Simulate AI Generation
+                        mm.ai_summary = f"Automated Executive Summary for {m.title}. Discussed Q3 budget and agreed on 20% increase for social media."
+                        mm.decisions = ["Approve 20% increase in social media budget."]
+                        mm.action_items_raw = [{"task": "Update Excel spreadsheet", "owner": "Participant"}]
+                        mm.status = 'READY'
+                        
+                        log_entry = {'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"), 'event': 'AI Summary & Actions Generated.', 'type': 'success'}
+                        current_logs.append(log_entry)
+                        mm.processing_logs = current_logs
+                        mm.save()
+                        
+                        # Create Action Items in DB
+                        admin_user = m.created_by
+                        ActionItem.objects.create(
+                            meeting=m,
+                            task_name="Update Excel spreadsheet",
+                            description="Automatically extracted from transcript.",
+                            assigned_to=admin_user,
+                            priority="HIGH",
+                            due_date=timezone.now().date() + datetime.timedelta(days=1)
+                        )
+                        InAppNotification.objects.create(
+                            user=admin_user,
+                            message=f"You have been assigned an automated Action Item from {m.title}",
+                            notification_type='TASK',
+                            related_meeting=m
+                        )
+                        
+                        # 3. Generate PDF
+                        pdf_buffer = io.BytesIO()
+                        p = canvas.Canvas(pdf_buffer, pagesize=letter)
+                        p.drawString(100, 750, f"Automated MoM: {m.title}")
+                        p.drawString(100, 730, f"Summary: {mm.ai_summary}")
+                        p.showPage()
+                        p.save()
+                        
+                        pdf_file = ContentFile(pdf_buffer.getvalue())
+                        mm.pdf_export.save(f"automated_mom_{m.id}.pdf", pdf_file)
+                        
+                        # 4. Generate DOCX
+                        doc_buffer = io.BytesIO()
+                        doc = docx.Document()
+                        doc.add_heading(f"Automated MoM: {m.title}", 0)
+                        doc.add_paragraph(mm.ai_summary)
+                        doc.save(doc_buffer)
+                        
+                        docx_file = ContentFile(doc_buffer.getvalue())
+                        mm.docx_export.save(f"automated_mom_{m.id}.docx", docx_file)
+                        
+                        log_entry = {'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"), 'event': 'PDF & DOCX Generated successfully.', 'type': 'success'}
+                        current_logs.append(log_entry)
+                        mm.processing_logs = current_logs
+                        mm.save()
+                        
+                        # 5. Email Participants
+                        participants = [p.user for p in m.participants.all()]
+                        if m.created_by not in participants:
+                            participants.append(m.created_by)
+                            
+                        for user in participants:
+                            subject = f"MoM Ready: {m.title}"
+                            text_content = f"The automated Minutes of Meeting for '{m.title}' are now available.\n\nSummary:\n{mm.ai_summary}\n\nPlease check the portal to download the attachments."
+                            msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email])
+                            
+                            pdf_buffer.seek(0)
+                            msg.attach(f"MoM_{m.id}.pdf", pdf_buffer.read(), 'application/pdf')
+                            
+                            try:
+                                msg.send(fail_silently=True)
+                            except Exception:
+                                pass
+                            
+                            InAppNotification.objects.create(
+                                user=user,
+                                message=f"The Automated Minutes of Meeting for {m.title} are ready.",
+                                notification_type='MOM',
+                                related_meeting=m
+                            )
+                            
+                        log_entry = {'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"), 'event': 'Email Notifications Sent.', 'type': 'success'}
+                        current_logs.append(log_entry)
+                        mm.processing_logs = current_logs
+                        mm.save()
+                        
+                    except Exception as e:
+                        log_entry = {'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"), 'event': f'Automated Pipeline Failed: {str(e)}', 'type': 'error'}
+                        mm.processing_logs.append(log_entry)
+                        mm.status = 'PENDING'
+                        mm.save()
+                        
+                threading.Thread(target=background_pipeline, args=(meeting.id,)).start()
+                return JsonResponse({'status': 'processing_started'})
+
+            return JsonResponse({'status': 'ignored', 'event': event})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
+    return JsonResponse({'status': 'invalid method'})
+
+@login_required
+def simulate_zoom_webhook(request, meeting_id):
+    import requests
+    from core.models import Meeting
+    from django.urls import reverse
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    
+    meeting = Meeting.objects.get(id=meeting_id)
+    
+    # Extract zoom ID from description if present
+    zoom_id = str(meeting.id)
+    if meeting.description and "Zoom Meeting ID:" in meeting.description:
+        import re
+        match = re.search(r'Zoom Meeting ID:\s*(\d+)', meeting.description)
+        if match:
+            zoom_id = match.group(1)
+            
+    payload = {
+        "event": "recording.transcript_completed",
+        "payload": {
+            "object": {
+                "id": zoom_id,
+                "topic": meeting.title
+            }
+        }
+    }
+    
+    webhook_url = request.build_absolute_uri(reverse('zoom_webhook'))
+    try:
+        # Fire and forget request to self
+        threading.Thread(target=requests.post, args=(webhook_url,), kwargs={'json': payload}).start()
+        messages.success(request, "Zoom Webhook simulation triggered. Background pipeline is processing the transcript.")
+    except Exception as e:
+        messages.error(request, f"Failed to simulate webhook: {e}")
+        
+    return redirect('mom_detail', meeting_id=meeting.id)

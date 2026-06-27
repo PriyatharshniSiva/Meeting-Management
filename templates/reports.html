@@ -36,61 +36,44 @@
 
 <div class="glass-card">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 class="text-white m-0">Detailed Analytics</h5>
-        <div class="d-flex gap-2">
-            <input type="date" class="form-control form-control-sm glass-input">
-        </div>
+        <h5 class="text-white m-0">Completed Meetings Reports</h5>
     </div>
-    <div class="text-center py-5 text-secondary">
-        <i data-lucide="activity" style="width:48px; height:48px; opacity:0.3;" class="mb-3"></i>
-        <p>Interactive reporting charts will populate here when more meeting data is available.</p>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 bg-transparent align-middle" style="color: var(--text-primary);">
+            <thead style="background: var(--nav-hover-bg);">
+                <tr>
+                    <th class="border-0 text-secondary fw-normal py-3 ps-3">Meeting Title</th>
+                    <th class="border-0 text-secondary fw-normal py-3">Date</th>
+                    <th class="border-0 text-secondary fw-normal py-3 text-end pe-3">Export Formats</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                {% for m in completed_meetings %}
+                <tr>
+                    <td class="border-bottom py-3 ps-3">
+                        <strong class="text-white d-block">{{ m.title }}</strong>
+                        <small class="text-secondary">{{ m.get_meeting_type_display|default:m.meeting_type }}</small>
+                    </td>
+                    <td class="border-bottom py-3 text-secondary">{{ m.date }} {{ m.time }}</td>
+                    <td class="border-bottom py-3 text-end pe-3">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'export_pdf' m.id %}" class="btn btn-outline-primary" title="Export PDF"><i data-lucide="file-text" style="width:14px;"></i> PDF</a>
+                            <a href="{% url 'export_docx' m.id %}" class="btn btn-outline-primary" title="Export Word"><i data-lucide="file" style="width:14px;"></i> DOCX</a>
+                            <a href="{% url 'export_txt' m.id %}" class="btn btn-outline-primary" title="Export Text"><i data-lucide="align-left" style="width:14px;"></i> TXT</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center py-5 text-secondary border-0">
+                        <i data-lucide="inbox" style="width:48px; height:48px; opacity:0.3;" class="mb-3"></i>
+                        <p>No completed meetings found to generate reports for.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    function downloadReport(reportName, format) {
-        // Create dummy content based on format
-        let content = "MeetingMind Analytics Report Data\n\n";
-        let mimeType = "text/plain";
-        
-        if (format === 'csv') {
-            content = "Date,Task,Status\n2026-06-11,Design UI,Completed\n2026-06-12,Backend Auth,Pending\n";
-            mimeType = "text/csv";
-        } else if (format === 'xlsx') {
-            content = "Dummy Excel Data (Open as CSV):\nName,Role,Meetings_Attended\nAdmin,Owner,15\nEmployee,Staff,12\n";
-            mimeType = "text/csv"; // using csv for prototype
-        } else if (format === 'pdf') {
-            content = "PDF Dummy Content - This would be a generated PDF report with charts and graphs.";
-            mimeType = "application/pdf";
-        }
-
-        // Create Blob and Download Link
-        const blob = new Blob([content], { type: mimeType });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${reportName}_2026.${format === 'xlsx' ? 'csv' : format}`;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        // Show temporary success feedback on the button
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i data-lucide="check" style="width:16px;"></i> Downloaded';
-        btn.classList.replace('btn-outline-primary', 'btn-success');
-        lucide.createIcons();
-        
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.replace('btn-success', 'btn-outline-primary');
-            lucide.createIcons();
-        }, 2000);
-    }
-</script>
-{% endblock %}

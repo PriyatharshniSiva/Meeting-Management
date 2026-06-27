@@ -80,6 +80,7 @@
                     <a href="{% url 'meetings' %}" class="nav-item {% if request.resolver_match.url_name == 'meetings' %}active{% endif %}"><i data-lucide="users" class="icon-purple"></i> <span class="nav-text">Meetings</span></a>
                     <a href="{% url 'calendar' %}" class="nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}"><i data-lucide="calendar" class="icon-cyan"></i> <span class="nav-text">Calendar</span></a>
                     <a href="{% url 'attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}"><i data-lucide="check-square" class="icon-green"></i> <span class="nav-text">Attendance</span></a>
+                    <a href="{% url 'projects' %}" class="nav-item {% if request.resolver_match.url_name == 'projects' %}active{% endif %}"><i data-lucide="briefcase" class="icon-yellow"></i> <span class="nav-text">Projects</span></a>
                     <a href="{% url 'mom' %}" class="nav-item {% if request.resolver_match.url_name == 'mom' %}active{% endif %}"><i data-lucide="file-text" class="icon-blue"></i> <span class="nav-text">Minutes of Meeting</span></a>
                     <a href="{% url 'tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'tasks' %}active{% endif %}"><i data-lucide="list-todo" class="icon-orange"></i> <span class="nav-text">Action Items</span></a>
                     <a href="{% url 'reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}"><i data-lucide="bar-chart-2" class="icon-blue"></i> <span class="nav-text">Reports</span></a>
@@ -187,128 +188,115 @@
     </div>
 
     <script>
-    let globalRecognition;
-    let globalTranscriptText = "";
-    // Grab existing history from DOM if on MoM page, else start fresh
+    let globalMediaRecorder;
+    let globalAudioChunks = [];
     let globalMeetingId = "{{ global_ongoing_meeting.id }}";
     let globalUsername = "{{ request.user.username|default:'Admin' }}";
 
     window.addEventListener('DOMContentLoaded', () => {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            console.log("Web Speech API not supported.");
-            return;
+        function logEventToBackend(eventStr, typeStr='info') {
+            fetch('/mom/autosave/' + globalMeetingId + '/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ transcript: '', mode: 'append', log_event: eventStr, log_type: typeStr })
+            });
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        globalRecognition = new SpeechRecognition();
-        globalRecognition.continuous = true;
-        globalRecognition.interimResults = true;
-
-        globalRecognition.onresult = function(event) {
-            let finalTranscript = '';
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-
-            let box = document.getElementById('liveTranscriptBox');
-
-            if (interimTranscript !== '') {
-                if (box) {
-                    let interimDiv = document.getElementById('interimDiv');
-                    if (!interimDiv) {
-                        interimDiv = document.createElement('div');
-                        interimDiv.id = 'interimDiv';
-                        interimDiv.className = 'mb-3 opacity-50';
-                        box.appendChild(interimDiv);
-                    }
-                    interimDiv.innerHTML = `
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <strong class="text-primary small">${globalUsername} <i data-lucide="mic" class="pulse-ring" style="width:12px;"></i></strong>
-                        </div>
-                        <p class="text-secondary small m-0 ps-2" style="border-left: 2px dashed var(--primary);">${interimTranscript}</p>
-                    `;
-                    box.scrollTop = box.scrollHeight;
-                }
-            } else if (box) {
-                let interimDiv = document.getElementById('interimDiv');
-                if (interimDiv) interimDiv.remove();
-            }
-
-            if (finalTranscript.trim() !== '') {
-                let lineStr = globalUsername + ": " + finalTranscript.trim() + "\n";
-                
-                // If on MoM page, append to UI
-                if (box) {
-                    let interimDiv = document.getElementById('interimDiv');
-                    if (interimDiv) interimDiv.remove();
-                    
-                    let div = document.createElement('div');
-                    div.className = 'mb-3';
-                    div.innerHTML = `
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <strong class="text-primary small">${globalUsername}</strong>
-                        </div>
-                        <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">${finalTranscript.trim()}</p>
-                    `;
-                    box.appendChild(div);
-                    box.scrollTop = box.scrollHeight;
-                    
-                    // The backend autosave endpoint will fully replace the history.
-                    // So we must fetch the entire current text block from the UI to preserve past history!
-                    // Let's just collect all <p> tags inside the box.
-                    let allText = "";
-                    let paragraphs = box.querySelectorAll('p.text-secondary');
-                    let names = box.querySelectorAll('strong.text-primary');
-                    for (let j = 0; j < paragraphs.length; j++) {
-                        allText += names[j].innerText + ": " + paragraphs[j].innerText + "\n";
-                    }
-                    globalTranscriptText = allText;
-                } else {
-                    // If not on MoM page, we don't have the past history loaded in DOM.
-                    // We will just accumulate. The backend replace will wipe history if we aren't careful!
-                    // Wait, our backend view `autosave_transcript` replaces the whole history!
-                    // If we just send the new lines, the backend needs to append it.
-                    globalTranscriptText = lineStr;
-                }
-
-                // Autosave to backend
-                fetch('/mom/autosave/' + globalMeetingId + '/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ transcript: globalTranscriptText, mode: box ? 'replace' : 'append' })
-                });
-            }
-        };
-
-        globalRecognition.onerror = function(event) {
-            console.log("Speech recognition error", event.error);
-        };
-
-        globalRecognition.onend = function() {
-            setTimeout(() => {
-                try { globalRecognition.start(); } catch(e){}
-            }, 1000);
-        };
-
-        setTimeout(() => {
+        async function startRealAudioCapture() {
             try {
-                globalRecognition.start();
-            } catch(e) {
-                console.log("Browser blocked auto-start.");
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Use a standard mimeType if possible
+                let options = {};
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    options = { mimeType: 'audio/webm;codecs=opus' };
+                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                    options = { mimeType: 'audio/webm' };
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    options = { mimeType: 'audio/mp4' };
+                }
+                
+                globalMediaRecorder = new MediaRecorder(stream, options);
+                
+                globalMediaRecorder.onstart = () => {
+                    logEventToBackend('Microphone Capture Started', 'success');
+                };
+                
+                globalMediaRecorder.ondataavailable = async (event) => {
+                    if (event.data && event.data.size > 0) {
+                        // Send the chunk to the backend
+                        let formData = new FormData();
+                        formData.append('audio_blob', event.data, 'chunk.webm');
+                        
+                        try {
+                            // Show interim UI indicator if on mom page
+                            let box = document.getElementById('liveTranscriptBox');
+                            if (box) {
+                                let interimDiv = document.getElementById('interimDiv');
+                                if (!interimDiv) {
+                                    interimDiv = document.createElement('div');
+                                    interimDiv.id = 'interimDiv';
+                                    interimDiv.className = 'mb-3 opacity-50';
+                                    box.appendChild(interimDiv);
+                                }
+                                interimDiv.innerHTML = `
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <strong class="text-warning small"><i data-lucide="loader" class="spin-animation" style="width:12px;"></i> AI Processing Audio Chunk...</strong>
+                                    </div>
+                                `;
+                                box.scrollTop = box.scrollHeight;
+                                lucide.createIcons();
+                            }
+                            
+                            // Send audio to the server-side transcription engine
+                            await fetch('/mom/process_audio/' + globalMeetingId + '/', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (box) {
+                                let interimDiv = document.getElementById('interimDiv');
+                                if (interimDiv) interimDiv.remove();
+                            }
+                        } catch (e) {
+                            console.error("Error sending audio chunk:", e);
+                        }
+                    }
+                };
+                
+                globalMediaRecorder.onerror = (event) => {
+                    console.error("MediaRecorder error", event.error);
+                    logEventToBackend('Microphone Error: ' + event.error, 'error');
+                };
+                
+                // Capture chunks every 6 seconds by stopping and restarting
+                // This ensures each Blob has a proper WebM header for ffmpeg to decode
+                globalMediaRecorder.start();
+                
+                setInterval(() => {
+                    if (globalMediaRecorder && globalMediaRecorder.state === 'recording') {
+                        globalMediaRecorder.stop();
+                        setTimeout(() => {
+                            try { globalMediaRecorder.start(); } catch(e){}
+                        }, 50);
+                    }
+                }, 6000);
+            } catch (err) {
+                console.error("Failed to start audio capture:", err);
+                logEventToBackend('Microphone Access Denied or Unavailable', 'error');
             }
-        }, 1000);
+        }
         
-        document.body.addEventListener('click', function startOnce() {
-            try { globalRecognition.start(); } catch(e){}
-            document.body.removeEventListener('click', startOnce);
-        });
+        // Expose to window so mom.html can manually force it if needed
+        window.globalRecognition = {
+            start: startRealAudioCapture,
+            stop: () => { if (globalMediaRecorder) globalMediaRecorder.stop(); }
+        };
+
+        // Try to auto-start
+        setTimeout(() => {
+            startRealAudioCapture();
+        }, 1000);
     });
     </script>
     {% endif %}
@@ -405,8 +393,6 @@
         setInterval(fetchUnreadCount, 5000);
     });
     </script>
-    <!-- Bootstrap JS needed for dropdown -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% endif %}
 </body>
 </html>

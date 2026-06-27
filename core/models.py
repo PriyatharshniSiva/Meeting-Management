@@ -64,6 +64,7 @@ class MeetingMinutes(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     notes = models.TextField()
     history = models.TextField(blank=True, null=True)
+    processing_logs = models.JSONField(default=list, blank=True)
     attachment = models.FileField(upload_to='mom_attachments/', blank=True, null=True)
     ai_summary = models.TextField(blank=True, null=True)
     decisions = models.JSONField(default=list, blank=True)
@@ -103,6 +104,8 @@ class InAppNotification(models.Model):
         ('INVITE', 'Meeting Invite'),
         ('REMINDER', 'Meeting Reminder'),
         ('SYSTEM', 'System Alert'),
+        ('PROJECT_INVITE', 'Project Invite'),
+        ('PROJECT_UPDATE', 'Project Update'),
     )
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
@@ -110,6 +113,7 @@ class InAppNotification(models.Model):
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     related_meeting = models.ForeignKey(Meeting, on_delete=models.SET_NULL, null=True, blank=True)
+    related_project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.notification_type}"
@@ -122,3 +126,44 @@ class PasswordResetOTP(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.otp}"
+
+class Project(models.Model):
+    PRIORITY_CHOICES = (
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
+    )
+    STATUS_CHOICES = (
+        ('OPEN', 'Open'),
+        ('TEAM_FINALIZED', 'Team Finalized'),
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    required_skills = models.TextField()
+    required_team_size = models.IntegerField()
+    deadline = models.DateField()
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='MEDIUM')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_projects')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class ProjectAssignmentLog(models.Model):
+    STATUS_CHOICES = (
+        ('INVITED', 'Invited'),
+        ('ACCEPTED', 'Accepted'),
+        ('DECLINED', 'Declined'),
+    )
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='assignment_logs')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='project_assignments')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='INVITED')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('project', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.project.name} ({self.status})"

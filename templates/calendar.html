@@ -50,21 +50,21 @@
     <div class="col-md-4">
         <div class="glass-card bg-gradient-blue hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="calendar"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Total Meetings</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ total_meetings }}</h3><span class="small text-white opacity-75">Total Meetings</span></div>
         </div>
     </div>
     <!-- 2. Today -->
     <div class="col-md-4">
         <div class="glass-card bg-gradient-purple hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="clock"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Today's Meetings</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ today_meetings }}</h3><span class="small text-white opacity-75">Today's Meetings</span></div>
         </div>
     </div>
     <!-- 3. Upcoming -->
     <div class="col-md-4">
         <div class="glass-card bg-gradient-ai hover-card h-100 p-3 d-flex align-items-center gap-3" style="border:none;">
             <div class="avatar bg-white bg-opacity-25"><i data-lucide="bell"></i></div>
-            <div><h3 class="fw-bold mb-0 text-white">0</h3><span class="small text-white opacity-75">Upcoming</span></div>
+            <div><h3 class="fw-bold mb-0 text-white">{{ upcoming_count }}</h3><span class="small text-white opacity-75">Upcoming</span></div>
         </div>
     </div>
 </div>
@@ -111,46 +111,29 @@
         <!-- Today's Agenda Timeline -->
         <div class="glass-card">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h6 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="list" class="icon-blue"></i> Today's Agenda</h6>
-                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">4 Events</span>
+                <h6 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="list" class="icon-blue"></i> Upcoming Agenda</h6>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">{{ upcoming_meetings|length }} Events</span>
             </div>
             <div class="position-relative ps-2">
                 <div class="agenda-timeline-connector"></div>
-                <!-- Event 1 -->
+                {% for m in upcoming_meetings %}
                 <div class="mb-4 position-relative z-1">
                     <div class="d-flex align-items-start gap-3">
-                        <div class="avatar bg-card-bg border border-success text-success mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="video" style="width:14px;"></i></div>
-                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2);">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <strong class="text-white d-block mb-1">Sprint Planning</strong>
-                                <span class="badge bg-success">Live Now</span>
-                            </div>
-                            <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="clock" style="width:12px;"></i> 09:00 AM - 10:30 AM</small>
-                            <button class="btn btn-sm btn-success py-0 px-2 small">Join</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Event 2 -->
-                <div class="mb-4 position-relative z-1">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="avatar bg-card-bg border border-primary text-primary mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="users" style="width:14px;"></i></div>
+                        <div class="avatar bg-card-bg border border-primary text-primary mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="{% if m.meeting_type == 'ONLINE' %}video{% else %}users{% endif %}" style="width:14px;"></i></div>
                         <div class="flex-grow-1 p-2 rounded" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
-                            <strong class="text-white d-block mb-1">Team Sync</strong>
-                            <small class="text-secondary d-flex align-items-center gap-1"><i data-lucide="clock" style="width:12px;"></i> 11:00 AM - 12:00 PM</small>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="text-white d-block mb-1">{{ m.title }}</strong>
+                            </div>
+                            <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="calendar" style="width:12px;"></i> {{ m.date }} | <i data-lucide="clock" style="width:12px;"></i> {{ m.time }}</small>
+                            {% if m.meeting_type == 'ONLINE' %}
+                            <a href="{% url 'mom_view' m.id %}" class="btn btn-sm btn-outline-primary py-0 px-2 small">Details / Join</a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                <!-- Event 3 -->
-                <div class="mb-0 position-relative z-1">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="avatar bg-card-bg border border-purple text-purple mt-1" style="width:32px; height:32px; z-index:2;"><i data-lucide="briefcase" style="width:14px;"></i></div>
-                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2);">
-                            <strong class="text-white d-block mb-1">Client Demo</strong>
-                            <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="clock" style="width:12px;"></i> 02:00 PM - 03:00 PM</small>
-                            <button class="btn btn-sm btn-outline-purple py-0 px-2 small">Details</button>
-                        </div>
-                    </div>
-                </div>
+                {% empty %}
+                <p class="text-secondary small mt-3">No upcoming meetings.</p>
+                {% endfor %}
             </div>
         </div>
 
@@ -241,20 +224,59 @@
             stickyHeaderDates: true,
             dayMaxEvents: true,
             height: 'auto',
-            events: [
-                { title: 'Sprint Planning', start: today + 'T09:00:00', end: today + 'T10:30:00', classNames: ['event-internal'] },
-                { title: 'Team Sync', start: today + 'T11:00:00', end: today + 'T12:00:00', classNames: ['event-online'] },
-                { title: 'Client Demo', start: today + 'T14:00:00', end: today + 'T15:00:00', classNames: ['event-client'] },
-                { title: 'Board Meeting Q3', start: new Date(Date.now() + 86400000).toISOString().split('T')[0] + 'T11:00:00', classNames: ['event-offline'] },
-                { title: 'React Training', start: new Date(Date.now() + 172800000).toISOString().split('T')[0] + 'T13:00:00', classNames: ['event-training'] },
-                { title: 'Cancelled Check-in', start: new Date(Date.now() - 86400000).toISOString().split('T')[0] + 'T10:00:00', classNames: ['event-cancelled'] }
-            ],
+            events: {{ events_json|safe }},
+            eventDrop: function(info) {
+                // Drag and drop event to change its date/time
+                var newStart = info.event.start;
+                var meetingId = info.event.id;
+                
+                // Get offset-corrected string because toISOString converts to UTC
+                var localOffset = newStart.getTimezoneOffset() * 60000;
+                var localTime = new Date(newStart.getTime() - localOffset).toISOString().slice(0, 16);
+                
+                fetch('/calendar/update_time/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        'meeting_id': meetingId,
+                        'new_datetime': localTime
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        showToast('Meeting rescheduled successfully!', 'success');
+                    } else {
+                        showToast('Failed to reschedule: ' + data.message, 'error');
+                        info.revert();
+                    }
+                })
+                .catch(err => {
+                    showToast('Network error while rescheduling.', 'error');
+                    info.revert();
+                });
+            },
             eventClick: function(info) {
                 // Open Custom Details Modal
+                info.jsEvent.preventDefault(); // Prevent default URL navigation
+                
                 document.getElementById('modalTitle').textContent = info.event.title;
                 document.getElementById('modalDate').textContent = info.event.start.toLocaleDateString();
                 document.getElementById('modalTime').textContent = info.event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
+                // Add a link button inside the modal to go to MoM if it exists
+                var linkHtml = '';
+                if(info.event.url) {
+                    linkHtml = `<a href="${info.event.url}" class="btn btn-primary mt-3">Go to Meeting Minutes</a>`;
+                }
+                var modalBody = document.querySelector('#meetingModal .modal-body');
+                var existingBtn = modalBody.querySelector('a.btn-primary');
+                if(existingBtn) existingBtn.remove();
+                if(linkHtml) modalBody.insertAdjacentHTML('beforeend', linkHtml);
+
                 var modal = new bootstrap.Modal(document.getElementById('meetingModal'));
                 modal.show();
             }

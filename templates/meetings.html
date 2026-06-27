@@ -143,91 +143,6 @@
 </div>
 
 
-<!-- Meetings Table View (Removed) -->
-<div class="d-none" id="tableView">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 bg-transparent align-middle" style="color: var(--text-primary);">
-            <thead style="background: var(--nav-hover-bg);">
-                <tr>
-                    <th class="border-0 text-secondary fw-normal py-4 ps-4">Meeting Title</th>
-                    <th class="border-0 text-secondary fw-normal py-4">Date & Time</th>
-                    <th class="border-0 text-secondary fw-normal py-4">Type</th>
-                    <th class="border-0 text-secondary fw-normal py-4">Participants</th>
-                    <th class="border-0 text-secondary fw-normal py-4">Priority</th>
-                    <th class="border-0 text-secondary fw-normal py-4">Status</th>
-                    <th class="border-0 text-secondary fw-normal py-4 text-end pe-4">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="border-top-0">
-                <!-- Row 1 -->
-                <tr>
-                    <td class="border-bottom py-4 ps-4">
-                        <strong class="text-white d-block">Sprint Planning</strong>
-                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">Discussing Q3 engineering tickets</small>
-                    </td>
-                    <td class="border-bottom py-4 text-white">Today<br><small class="text-secondary">10:00 AM</small></td>
-                    <td class="border-bottom py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="video" class="icon-green me-1" style="width:12px;"></i> Online</span></td>
-                    <td class="border-bottom py-4">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar bg-primary text-white" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">A</div>
-                            <div class="avatar bg-primary text-white" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">B</div>
-                            <div class="avatar bg-secondary text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">+6</div>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-4"><span class="badge bg-danger bg-opacity-25 text-danger rounded-pill border border-danger">High</span></td>
-                    <td class="border-bottom py-4"><span class="badge bg-success bg-opacity-25 text-success rounded-pill border border-success">Ongoing</span></td>
-                    <td class="border-bottom py-4 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-success border-0" title="Join"><i data-lucide="play-circle" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
-                    </td>
-                </tr>
-                <!-- Row 2 -->
-                <tr>
-                    <td class="border-bottom py-4 ps-4">
-                        <strong class="text-white d-block">Client Demo: Beta</strong>
-                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">External presentation</small>
-                    </td>
-                    <td class="border-bottom py-4 text-white">Today<br><small class="text-secondary">2:30 PM</small></td>
-                    <td class="border-bottom py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="video" class="icon-green me-1" style="width:12px;"></i> Online</span></td>
-                    <td class="border-bottom py-4">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar bg-warning text-dark" style="width:28px;height:28px;font-size:10px; margin-right:-8px; border:2px solid var(--card-bg);">P</div>
-                            <div class="avatar bg-secondary text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">+3</div>
-                        </div>
-                    </td>
-                    <td class="border-bottom py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Critical</span></td>
-                    <td class="border-bottom py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Scheduled</span></td>
-                    <td class="border-bottom py-4 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Details"><i data-lucide="eye" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
-                    </td>
-                </tr>
-                <!-- Row 3 -->
-                <tr>
-                    <td class="border-0 py-4 ps-4">
-                        <strong class="text-white d-block">Board Meeting Q3</strong>
-                        <small class="text-secondary text-truncate" style="max-width:200px; display:block;">Quarterly financials review</small>
-                    </td>
-                    <td class="border-0 py-4 text-white">Tomorrow<br><small class="text-secondary">11:00 AM</small></td>
-                    <td class="border-0 py-4"><span class="badge bg-dark border border-secondary text-white"><i data-lucide="building" class="icon-orange me-1" style="width:12px;"></i> Offline</span></td>
-                    <td class="border-0 py-4">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar bg-danger text-white" style="width:28px;height:28px;font-size:10px; border:2px solid var(--card-bg);">12</div>
-                        </div>
-                    </td>
-                    <td class="border-0 py-4"><span class="badge bg-warning bg-opacity-25 text-warning rounded-pill border border-warning">Medium</span></td>
-                    <td class="border-0 py-4"><span class="badge bg-primary bg-opacity-25 text-primary rounded-pill border border-primary">Scheduled</span></td>
-                    <td class="border-0 py-4 text-end pe-4">
-                        <button class="btn btn-sm btn-icon text-primary border-0" title="Details"><i data-lucide="eye" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Edit"><i data-lucide="edit-2" style="width:18px;"></i></button>
-                        <button class="btn btn-sm btn-icon text-secondary border-0 hover-white" title="Delete"><i data-lucide="trash-2" style="width:18px;"></i></button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-   </div>
 
 {% endblock %}
 
@@ -303,8 +218,8 @@
 
 <!-- Create Meeting Modal -->
 <div class="modal fade" id="createMeetingModal" tabindex="-1" aria-labelledby="createMeetingModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content glass-card" style="background: var(--card-bg); border: 1px solid var(--glass-border);">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen">
+    <div class="modal-content glass-card border-0" style="background: var(--card-bg);">
       <div class="modal-header border-secondary border-opacity-25">
         <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel"><i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -349,25 +264,60 @@
               </div>
               <div class="mb-3">
                   <label class="form-label text-secondary small mb-2">Roles to Invite</label>
-                  <div class="d-flex flex-wrap gap-3">
-                      <div class="form-check custom-checkbox">
-                          <input class="form-check-input" type="checkbox" name="roles" value="ADMIN" id="roleAdmin">
-                          <label class="form-check-label" style="color: var(--text-primary);" for="roleAdmin">Owner/Admin</label>
-                      </div>
-                      <div class="form-check custom-checkbox">
-                          <input class="form-check-input" type="checkbox" name="roles" value="TL" id="roleTL">
-                          <label class="form-check-label" style="color: var(--text-primary);" for="roleTL">Team Leader</label>
-                      </div>
-                      <div class="form-check custom-checkbox">
-                          <input class="form-check-input" type="checkbox" name="roles" value="EMPLOYEE" id="roleEmployee">
-                          <label class="form-check-label" style="color: var(--text-primary);" for="roleEmployee">Employee</label>
-                      </div>
-                      <div class="form-check custom-checkbox">
-                          <input class="form-check-input" type="checkbox" name="roles" value="INTERN" id="roleIntern">
-                          <label class="form-check-label" style="color: var(--text-primary);" for="roleIntern">Intern</label>
-                      </div>
+                  <div class="dropdown">
+                      <button id="rolesDropdownBtn" class="btn form-control glass-input text-white text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="background-color: rgba(0,0,0,0.2);">
+                          <span id="rolesDropdownText">Select roles...</span>
+                          <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
+                      </button>
+                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">
+                          <li>
+                              <div class="form-check custom-checkbox mb-2">
+                                  <input class="form-check-input" type="checkbox" name="roles" value="ADMIN" id="roleAdminDrop">
+                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleAdminDrop">Owner/Admin</label>
+                              </div>
+                          </li>
+                          <li>
+                              <div class="form-check custom-checkbox mb-2">
+                                  <input class="form-check-input" type="checkbox" name="roles" value="TL" id="roleTLDrop">
+                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleTLDrop">Team Leader</label>
+                              </div>
+                          </li>
+                          <li>
+                              <div class="form-check custom-checkbox mb-2">
+                                  <input class="form-check-input" type="checkbox" name="roles" value="EMPLOYEE" id="roleEmployeeDrop">
+                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleEmployeeDrop">Employee</label>
+                              </div>
+                          </li>
+                          <li>
+                              <div class="form-check custom-checkbox">
+                                  <input class="form-check-input" type="checkbox" name="roles" value="INTERN" id="roleInternDrop">
+                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleInternDrop">Intern</label>
+                              </div>
+                          </li>
+                      </ul>
                   </div>
-                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the roles you want to invite. All users with these roles will be included.</small>
+                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the boxes inside the dropdown to select multiple roles.</small>
+                  
+                  <script>
+                  document.addEventListener('DOMContentLoaded', function() {
+                      const roleCheckboxes = document.querySelectorAll('.dropdown-menu input[name="roles"]');
+                      const dropdownText = document.getElementById('rolesDropdownText');
+                      
+                      roleCheckboxes.forEach(cb => {
+                          cb.addEventListener('change', () => {
+                              const selected = Array.from(roleCheckboxes)
+                                  .filter(i => i.checked)
+                                  .map(i => i.nextElementSibling.textContent.trim());
+                              
+                              if (selected.length > 0) {
+                                  dropdownText.textContent = selected.join(', ');
+                              } else {
+                                  dropdownText.textContent = 'Select roles...';
+                              }
+                          });
+                      });
+                  });
+                  </script>
               </div>
               <div class="mb-3">
                   <label class="form-label text-secondary small mb-1">Description / Agenda</label>

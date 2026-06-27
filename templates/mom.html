@@ -82,6 +82,7 @@
                         {% if is_ongoing %}
                         <div class="position-sticky top-0 text-center mb-3 z-1">
                             <span class="badge bg-danger border border-danger text-white small pulse-ring">Live Mic Recording Active</span>
+                            <button class="btn btn-sm btn-danger d-block mx-auto mt-2" onclick="try{globalRecognition.start(); showToast('Microphone started manually', 'success');}catch(e){showToast('Microphone is already running or blocked', 'error');}">Force Start Mic</button>
                         </div>
                         {% else %}
                         <div class="position-sticky top-0 text-center mb-3 z-1">
@@ -159,6 +160,13 @@
             </div>
             
             <div id="aiSummarySection">
+                {% if minutes.status != 'READY' and minutes.status != 'GENERATING' %}
+                <div class="mb-3">
+                    <a href="{% url 'simulate_zoom_webhook' selected_meeting.id %}" class="btn btn-outline-warning w-100" style="border-radius: 8px;">
+                        <i data-lucide="zap" style="width: 16px; margin-right: 5px;"></i> Simulate Zoom Webhook (Auto-Process)
+                    </a>
+                </div>
+                {% endif %}
             {% if minutes.status == 'READY' and minutes.ai_summary %}
                 <p class="text-secondary small">{{ minutes.ai_summary }}</p>
                 
@@ -206,17 +214,20 @@
             <h5 class="text-white mb-3 d-flex align-items-center gap-2">
                 <i data-lucide="history" class="icon-green"></i> Auto-Sync Timeline
             </h5>
-            <div class="timeline mt-4" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px;">
-                <div class="mb-3 position-relative">
-                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
-                    <strong class="text-white d-block">Recording Started</strong>
-                    <small class="text-secondary">Today, 10:30 AM via Zoom Sync</small>
-                </div>
-                <div class="mb-3 position-relative">
-                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--primary);"></div>
-                    <strong class="text-white d-block">English Translation Initialized</strong>
-                    <small class="text-secondary">Today, 10:30 AM</small>
-                </div>
+            <div class="timeline mt-4" id="timelineContainer" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px;">
+                {% if minutes and minutes.processing_logs %}
+                    {% for log in minutes.processing_logs %}
+                    <div class="mb-3 position-relative">
+                        <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: {% if log.type == 'error' %}var(--danger){% elif log.type == 'success' %}var(--success){% else %}var(--primary){% endif %};"></div>
+                        <strong class="{% if log.type == 'error' %}text-danger{% else %}text-white{% endif %} d-block">{{ log.event }}</strong>
+                        <small class="text-secondary">{{ log.timestamp }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="mb-3 position-relative" id="emptyTimeline">
+                        <small class="text-secondary">Waiting for recording to start...</small>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -227,7 +238,7 @@
 {% block extra_js %}
 <script>
     window.addEventListener('DOMContentLoaded', (event) => {
-        {% if is_ongoing and not transcript_lines %}
+        {% if is_ongoing %}
         setTimeout(() => {
             try {
                 startLiveRecording();
@@ -259,10 +270,6 @@
             alert("Your browser does not support the Web Speech API. Please use Google Chrome.");
             return;
         }
-        
-        document.getElementById('uploadView').classList.add('d-none');
-        document.getElementById('uploadView').classList.remove('d-flex');
-        document.getElementById('liveRecordingView').classList.remove('d-none');
         
         // Let the global script handle the actual recording.
     }
@@ -333,17 +340,54 @@
                         }
                         currentLineCount = data.lines.length;
                     }
+                    
+                    if (data.logs && data.logs.length > 0) {
+                        let tlContainer = document.getElementById('timelineContainer');
+                        if (tlContainer) {
+                            let logsHTML = '';
+                            data.logs.forEach(log => {
+                                let color = log.type === 'error' ? 'var(--danger)' : (log.type === 'success' ? 'var(--success)' : 'var(--primary)');
+                                let textClass = log.type === 'error' ? 'text-danger' : 'text-white';
+                                logsHTML += `
+                                <div class="mb-3 position-relative">
+                                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: ${color};"></div>
+                                    <strong class="${textClass} d-block">${log.event}</strong>
+                                    <small class="text-secondary">${log.timestamp}</small>
+                                </div>
+                                `;
+                            });
+                            tlContainer.innerHTML = logsHTML;
+                        }
+                    }
                 }
             });
         }, 3000);
         
         {% elif minutes.status == 'PENDING' %}
             // If meeting ended but status is still pending, kick off generation!
-            showToast("Meeting ended. Automatically generating AI Summary...", "warning");
-            fetch('/mom/generate_summary/{{ selected_meeting.id }}/')
-            .then(() => {
-                window.location.reload();
-            });
+            if (!sessionStorage.getItem('summary_requested_{{ selected_meeting.id }}')) {
+                sessionStorage.setItem('summary_requested_{{ selected_meeting.id }}', 'true');
+                showToast("Meeting ended. Automatically generating AI Summary...", "warning");
+                fetch('/mom/generate_summary/{{ selected_meeting.id }}/')
+                .then(() => {
+                    window.location.reload();
+                });
+            } else {
+                console.log("Summary generation already attempted in this session.");
+            }
+        {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
+            // If background task is running, poll to refresh when it becomes READY
+            let checkInterval = setInterval(() => {
+                fetch('/mom/latest/{{ selected_meeting.id }}/')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (data.minutes_status === 'READY') {
+                            window.location.reload();
+                        }
+                    }
+                });
+            }, 3000);
         {% endif %}
     {% endif %}
 </script>

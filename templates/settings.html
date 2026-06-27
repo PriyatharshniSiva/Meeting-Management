@@ -20,15 +20,17 @@
             <div class="tab-pane fade show active" id="list-profile" role="tabpanel" aria-labelledby="list-profile-list">
                 <div class="glass-card">
                     <h5 class="text-white mb-4">Profile Settings</h5>
-                    <form>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_profile">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label text-secondary small text-uppercase">Username</label>
-                                <input type="text" class="form-control glass-input" value="{{ user.username }}">
+                                <input type="text" name="username" class="form-control glass-input" value="{{ user.username }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-secondary small text-uppercase">Email</label>
-                                <input type="email" class="form-control glass-input" value="{{ user.email }}">
+                                <input type="email" name="email" class="form-control glass-input" value="{{ user.email }}" required>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-gradient">Save Changes</button>
@@ -40,19 +42,21 @@
             <div class="tab-pane fade" id="list-security" role="tabpanel" aria-labelledby="list-security-list">
                 <div class="glass-card">
                     <h5 class="text-white mb-4">Security Settings</h5>
-                    <form>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_password">
                         <div class="mb-3">
                             <label class="form-label text-secondary small text-uppercase">Current Password</label>
-                            <input type="password" class="form-control glass-input" placeholder="Enter current password">
+                            <input type="password" name="current_password" class="form-control glass-input" placeholder="Enter current password" required>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label text-secondary small text-uppercase">New Password</label>
-                                <input type="password" class="form-control glass-input" placeholder="New password">
+                                <input type="password" name="new_password" class="form-control glass-input" placeholder="New password" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-secondary small text-uppercase">Confirm New Password</label>
-                                <input type="password" class="form-control glass-input" placeholder="Confirm new password">
+                                <input type="password" name="confirm_password" class="form-control glass-input" placeholder="Confirm new password" required>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-gradient">Update Password</button>

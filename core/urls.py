@@ -13,12 +13,16 @@ urlpatterns = [
     path('meetings/delete/<int:user_id>/', views.delete_user_view, name='delete_user'),
     path('meeting/delete/<int:meeting_id>/', views.delete_meeting_view, name='delete_meeting'),
     path('calendar/', views.calendar_view, name='calendar'),
+    path('calendar/update_time/', views.update_meeting_time, name='update_meeting_time'),
     path('attendance/', views.attendance_view, name='attendance'),
     path('attendance/update/<int:participant_id>/', views.update_attendance, name='update_attendance'),
     path('mom/', views.mom_view, name='mom'),
     path('mom/<int:meeting_id>/', views.mom_view, name='mom_detail'),
     path('mom/autosave/<int:meeting_id>/', views.autosave_transcript, name='autosave_transcript'),
+    path('mom/process_audio/<int:meeting_id>/', views.process_audio, name='process_audio'),
     path('mom/latest/<int:meeting_id>/', views.latest_transcript, name='latest_transcript'),
+    path('zoom/webhook/', views.zoom_webhook, name='zoom_webhook'),
+    path('zoom/simulate/<int:meeting_id>/', views.simulate_zoom_webhook, name='simulate_zoom_webhook'),
     
     # Notifications AJAX
     path('notifications/unread-count/', views.unread_notification_count, name='unread_notification_count'),
@@ -35,6 +39,12 @@ urlpatterns = [
     path('tasks/', views.tasks_view, name='tasks'),
     path('reports/', views.reports_view, name='reports'),
     path('ai-features/', views.ai_features_view, name='ai_features'),
+    
+    # Projects
+    path('projects/', views.projects_view, name='projects'),
+    path('projects/accept/<int:project_id>/', views.accept_project, name='accept_project'),
+    path('projects/decline/<int:project_id>/', views.decline_project, name='decline_project'),
+    
     path('settings/', views.settings_view, name='settings'),
     path('notifications/', views.notifications_view, name='notifications'),
     path('rsvp/<int:meeting_id>/', views.rsvp_view, name='rsvp'),
