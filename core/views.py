@@ -1,51 +1,84 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from .models import Meeting, ActionItem
+from django.contrib import messages
+from .models import Meeting, ActionItem, CustomUser
 
 def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
+    if request.method == 'GET' and request.user.is_authenticated:
+        auth_logout(request)
         
     if request.method == 'POST':
-        u = request.POST.get('username')
-        p = request.POST.get('password')
-        user = authenticate(request, username=u, password=p)
+        login_input = request.POST.get('email', '').strip() or request.POST.get('username', '').strip()
+        p = request.POST.get('password', '').strip()
+        
+        if not login_input or not p:
+            return render(request, 'login.html', {'error': 'Please provide both email/username and password.'})
+            
+        # Check if login_input is email
+        username_to_auth = login_input
+        if '@' in login_input:
+            user_obj = CustomUser.objects.filter(email__iexact=login_input).first()
+            if user_obj:
+                username_to_auth = user_obj.username
+                
+        user = authenticate(request, username=username_to_auth, password=p)
         if user is not None:
             auth_login(request, user)
+            request.session.set_expiry(0) # Strictly expire when browser closes
             return redirect('dashboard')
         else:
-            return render(request, 'login.html', {'error': 'Invalid credentials'})
+            return render(request, 'login.html', {'error': 'Invalid credentials. Please check your email and password.'})
             
     return render(request, 'login.html')
 
+
 def signup_view(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
+    if request.method == 'GET' and request.user.is_authenticated:
+        auth_logout(request)
+
         
     if request.method == 'POST':
-        u = request.POST.get('username')
-        e = request.POST.get('email')
-        p = request.POST.get('password')
-        r = request.POST.get('role', 'EMPLOYEE')
+        full_name = request.POST.get('full_name', '').strip()
+        role = request.POST.get('role', 'EMPLOYEE').strip()
+        email = request.POST.get('email', '').strip()
+        phone_number = request.POST.get('phone_number', '').strip()
+        password = request.POST.get('password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
         
-        # Simple validation
-        if not u or not p:
-            return render(request, 'signup.html', {'error': 'Username and Password required'})
+        if not full_name or not email or not password or not confirm_password:
+            return render(request, 'signup.html', {'error': 'Full Name, Work Email, Password, and Confirm Password are required.'})
             
-        from core.models import CustomUser
-        if CustomUser.objects.filter(username=u).exists():
-            return render(request, 'signup.html', {'error': 'Username already exists'})
+        if password != confirm_password:
+            return render(request, 'signup.html', {'error': 'Passwords do not match. Please try again.'})
             
-        user = CustomUser.objects.create_user(username=u, email=e, password=p, role=r)
-        auth_login(request, user)
-        return redirect('dashboard')
+        if CustomUser.objects.filter(email__iexact=email).exists() or CustomUser.objects.filter(username__iexact=email).exists():
+            return render(request, 'signup.html', {'error': 'An account with this email already exists.'})
+            
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        user = CustomUser.objects.create_user(
+            username=email,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=phone_number,
+            role=role
+        )
+        messages.success(request, "Registration successful! Please log in with your credentials.")
+        return redirect('login')
         
     return render(request, 'signup.html')
 
+
 def logout_view(request):
     auth_logout(request)
+    request.session.flush()
     return redirect('login')
+
 
 @login_required
 def dashboard_view(request):
@@ -801,30 +834,39 @@ def decline_project(request, project_id):
 
 def request_otp_view(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
+        email = request.POST.get('email', '').strip()
         from core.models import CustomUser, PasswordResetOTP
         from django.core.mail import send_mail
         from django.conf import settings
         import random
         import string
         
-        try:
-            user = CustomUser.objects.get(email=email)
+        user = CustomUser.objects.filter(email__iexact=email).first()
+        if user:
             otp = ''.join(random.choices(string.digits, k=6))
             PasswordResetOTP.objects.create(user=user, otp=otp)
             
-            subject = "Password Reset OTP"
-            message = f"Your 6-digit OTP for password reset is: {otp}"
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+            subject = "Password Reset OTP - MeetingMind"
+            message = f"Hello {user.get_full_name() or user.username},\n\nYour 6-digit OTP for resetting your MeetingMind password is: {otp}\n\nThis code will expire in 15 minutes.\n\nIf you did not request this, please ignore this email."
+            
+            try:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to send email to {email}: {str(e)}")
+
             
             request.session['reset_email'] = email
+            messages.success(request, f"Verification OTP sent to {email}. Please check your email inbox.")
             return redirect('verify_otp')
-        except CustomUser.DoesNotExist:
-            # Silently redirect to avoid email enumeration
-            request.session['reset_email'] = email
-            return redirect('verify_otp')
+
+
+
+        else:
+            return render(request, 'registration/password_reset_form.html', {'error': 'No account found with this email address.'})
             
     return render(request, 'registration/password_reset_form.html')
+
 
 def verify_otp_view(request):
     email = request.session.get('reset_email')
@@ -832,27 +874,26 @@ def verify_otp_view(request):
         return redirect('password_reset')
         
     if request.method == 'POST':
-        otp = request.POST.get('otp')
+        otp = request.POST.get('otp', '').strip()
         from core.models import CustomUser, PasswordResetOTP
         from django.utils import timezone
         import datetime
         
-        try:
-            user = CustomUser.objects.get(email=email)
+        user = CustomUser.objects.filter(email__iexact=email).first()
+        if user:
             otp_record = PasswordResetOTP.objects.filter(user=user, otp=otp, is_used=False).order_by('-created_at').first()
             if otp_record:
-                # Check expiration (e.g. 15 minutes)
                 if timezone.now() - otp_record.created_at < datetime.timedelta(minutes=15):
                     otp_record.is_used = True
                     otp_record.save()
                     request.session['otp_verified'] = True
                     return redirect('set_new_password')
                 else:
-                    return render(request, 'registration/password_reset_done.html', {'error': 'OTP has expired.'})
+                    return render(request, 'registration/password_reset_done.html', {'error': 'OTP has expired. Please request a new one.'})
             else:
-                return render(request, 'registration/password_reset_done.html', {'error': 'Invalid OTP.'})
-        except CustomUser.DoesNotExist:
-            return render(request, 'registration/password_reset_done.html', {'error': 'Invalid request.'})
+                return render(request, 'registration/password_reset_done.html', {'error': 'Invalid OTP code. Please check your email and try again.'})
+        else:
+            return render(request, 'registration/password_reset_done.html', {'error': 'Invalid session or user not found.'})
             
     return render(request, 'registration/password_reset_done.html')
 
@@ -863,27 +904,29 @@ def set_new_password_view(request):
         return redirect('password_reset')
         
     if request.method == 'POST':
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
+        password = request.POST.get('password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
         
         if password != confirm_password:
             return render(request, 'registration/password_reset_confirm.html', {'error': 'Passwords do not match.'})
             
         from core.models import CustomUser
-        try:
-            user = CustomUser.objects.get(email=email)
+        user = CustomUser.objects.filter(email__iexact=email).first()
+        if user:
             user.set_password(password)
             user.save()
             
-            # Clear session
-            del request.session['reset_email']
-            del request.session['otp_verified']
+            if 'reset_email' in request.session: del request.session['reset_email']
+            if 'otp_verified' in request.session: del request.session['otp_verified']
             
-            return render(request, 'registration/password_reset_complete.html')
-        except CustomUser.DoesNotExist:
+            messages.success(request, "Password reset complete! Please log in with your new password.")
+            return redirect('login')
+        else:
             return redirect('password_reset')
             
     return render(request, 'registration/password_reset_confirm.html')
+
+
 
 @login_required
 def generate_summary(request, meeting_id):

@@ -1,117 +1,152 @@
 {% extends 'base.html' %}
 
-{% block page_title %}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<!-- Neon Split Hero Banner -->
-<div class="mb-5 page-transition" style="border-radius: 12px; overflow: hidden; background: linear-gradient(110deg, #1D4ED8 50%, #0A0A0A 50.1%); box-shadow: 0 0 25px rgba(59, 130, 246, 0.4), inset 0 0 10px rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); display: flex; position: relative;">
-    
-    <!-- Left Purple Diagonal Pane -->
-    <div style="flex: 1.5; padding: 40px 50px; display: flex; flex-direction: column; justify-content: center; color: white;">
-        <h2 class="fw-bold mb-2" style="font-size: 2.5rem; letter-spacing: 1px; line-height: 1.2;">WELCOME BACK,<br>{{ user.username|default:"ADMIN"|upper }}!</h2>
-        <p style="font-size: 0.95rem; max-width: 90%; opacity: 0.9; margin-bottom: 0;">Accessing the Meeting Management Core. System is fully operational.</p>
+<!-- Hero Welcome Banner (Ultra Premium Violet Gradient) -->
+<div class="mb-4 page-transition" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #10B981 0%, #047857 100%); box-shadow: 0 8px 30px rgba(16, 185, 129, 0.3); display: flex; position: relative;">
+    <div style="flex: 1.5; padding: 36px 40px; color: white;">
+        <span class="badge bg-white text-dark mb-2 fw-semibold px-3 py-2" style="border-radius: 20px; font-size: 0.8rem; color: #047857 !important;">ENTERPRISE WORKSPACE</span>
+        <h2 class="fw-bold mb-2 text-white" style="font-size: 2.2rem; letter-spacing: -0.5px;">Welcome back, {{ user.username|default:"User"|title }}!</h2>
+        <p style="font-size: 1rem; opacity: 0.95; margin-bottom: 0;">Accessing your Premium Meeting & Action Item Intelligence Hub.</p>
     </div>
 
-    <!-- Right Dark Pane (Clock) -->
-    <div style="flex: 1; padding: 40px 50px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right;">
-        <h3 class="mb-0" id="liveTime" style="font-size: 2.2rem; font-weight: 800; text-shadow: 0 0 15px rgba(59, 130, 246, 0.6); color: white !important;">00:00:00 AM</h3>
-        <p class="mb-0 mt-1" id="liveDate" style="color: #3B82F6; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.5px;">Monday, Jan 1, 2026</p>
+    <div class="d-none d-md-flex" style="flex: 1; padding: 36px 40px; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right;">
+        <h3 class="mb-0 text-white" id="liveTime" style="font-size: 2rem; font-weight: 800; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">00:00:00 AM</h3>
+        <p class="mb-0 mt-1 text-white opacity-90" id="liveDate" style="font-weight: 500; font-size: 1.05rem;">Monday, Jan 1, 2026</p>
     </div>
 </div>
 
-<!-- Statistics Cards (6 Cards) -->
-<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.1s;">
-    <!-- 1. Total Meetings -->
+<!-- Primary Statistics Cards Grid -->
+<div class="row g-4 mb-4 page-transition">
+    <!-- 1. Meetings (Violet Accent) -->
     <div class="col-md-4">
-        <div class="glass-card bg-gradient-blue hover-card h-100 text-center p-3" style="border:none;">
-            <i data-lucide="calendar" class="mb-2" style="width:28px; height:28px; color: rgba(255,255,255,0.8);"></i>
-            <h3 class="fw-bold mb-1 text-white">0</h3>
-            <span class="small" style="color: rgba(255,255,255,0.8);">Total Meetings</span>
+        <div class="stat-card accent-violet h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-card-icon">
+                        <i data-lucide="calendar" style="width:24px; height:24px;"></i>
+                    </div>
+                    <span class="text-secondary small fw-semibold text-uppercase">Total Meetings</span>
+                    <h2 class="fw-bold mb-1 mt-1 text-white">{{ total_meetings|default:"0" }}</h2>
+                </div>
+                <span class="badge bg-primary bg-opacity-10 text-primary d-flex align-items-center gap-1">
+                    <i data-lucide="trending-up" style="width:14px;"></i> +12%
+                </span>
+            </div>
         </div>
     </div>
-    <!-- 2. Upcoming -->
+    <!-- 2. Upcoming (Indigo Accent) -->
     <div class="col-md-4">
-        <div class="glass-card bg-gradient-purple hover-card h-100 text-center p-3" style="border:none;">
-            <i data-lucide="clock" class="mb-2" style="width:28px; height:28px; color: rgba(255,255,255,0.8);"></i>
-            <h3 class="fw-bold mb-1 text-white">0</h3>
-            <span class="small" style="color: rgba(255,255,255,0.8);">Upcoming</span>
+        <div class="stat-card accent-indigo h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-card-icon">
+                        <i data-lucide="clock" style="width:24px; height:24px;"></i>
+                    </div>
+                    <span class="text-secondary small fw-semibold text-uppercase">Upcoming Meetings</span>
+                    <h2 class="fw-bold mb-1 mt-1 text-white">{{ upcoming_meetings|default:"0" }}</h2>
+                </div>
+                <span class="badge bg-primary bg-opacity-10 text-primary d-flex align-items-center gap-1">
+                    <i data-lucide="activity" style="width:14px;"></i> Active
+                </span>
+            </div>
         </div>
     </div>
-    <!-- 3. Pending Tasks -->
+    <!-- 3. Action Items (Orange Accent) -->
     <div class="col-md-4">
-        <div class="glass-card bg-gradient-orange hover-card h-100 text-center p-3" style="border:none;">
-            <i data-lucide="clipboard-list" class="mb-2" style="width:28px; height:28px; color: rgba(255,255,255,0.8);"></i>
-            <h3 class="fw-bold mb-1 text-white">0</h3>
-            <span class="small" style="color: rgba(255,255,255,0.8);">Pending Tasks</span>
+        <div class="stat-card accent-orange h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-card-icon">
+                        <i data-lucide="list-todo" style="width:24px; height:24px;"></i>
+                    </div>
+                    <span class="text-secondary small fw-semibold text-uppercase">Pending Action Items</span>
+                    <h2 class="fw-bold mb-1 mt-1 text-white">{{ pending_tasks|default:"0" }}</h2>
+                </div>
+                <span class="badge bg-warning bg-opacity-10 text-warning d-flex align-items-center gap-1">
+                    <i data-lucide="alert-circle" style="width:14px;"></i> Pending
+                </span>
+            </div>
         </div>
     </div>
 </div>
 
 {% if user.role == 'ADMIN' %}
-<!-- Admin Overview: Meeting Notifications & RSVPs -->
-<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.2s;">
+<!-- Admin Overview: Invitations & Attendance -->
+<div class="row g-4 mb-4 page-transition">
     <div class="col-12">
-        <h5 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="shield" class="icon-purple"></i> Admin Overview: Invitations & Attendance</h5>
+        <h5 class="mb-3 d-flex align-items-center gap-2 text-white fw-bold">
+            <i data-lucide="shield-check" class="text-primary" style="width:22px;"></i> Admin Executive Overview
+        </h5>
     </div>
     
-    <!-- Total Invitations -->
     <div class="col-md-3">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05);">
-            <i data-lucide="send" class="mb-2 text-primary" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ total_invites }}</h4>
-            <span class="small text-secondary">Invitations Sent</span>
+        <div class="stat-card accent-cyan h-100 text-center">
+            <i data-lucide="send" class="mx-auto mb-2 text-cyan" style="width:28px; height:28px;"></i>
+            <h3 class="fw-bold mb-1 text-white">{{ total_invites|default:"0" }}</h3>
+            <span class="small text-secondary fw-medium">Invitations Sent</span>
         </div>
     </div>
     
-    <!-- Accepted RSVPs -->
     <div class="col-md-3">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.05);">
-            <i data-lucide="check-circle" class="mb-2 text-success" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ accepted_invites }}</h4>
-            <span class="small text-secondary">Accepted</span>
+        <div class="stat-card accent-emerald h-100 text-center">
+            <i data-lucide="check-circle" class="mx-auto mb-2 text-success" style="width:28px; height:28px;"></i>
+            <h3 class="fw-bold mb-1 text-white">{{ accepted_invites|default:"0" }}</h3>
+            <span class="small text-secondary fw-medium">Accepted RSVPs</span>
         </div>
     </div>
     
-    <!-- Declined RSVPs -->
     <div class="col-md-3">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
-            <i data-lucide="x-circle" class="mb-2 text-danger" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ declined_invites }}</h4>
-            <span class="small text-secondary">Declined</span>
+        <div class="stat-card accent-red h-100 text-center">
+            <i data-lucide="x-circle" class="mx-auto mb-2 text-danger" style="width:28px; height:28px;"></i>
+            <h3 class="fw-bold mb-1 text-white">{{ declined_invites|default:"0" }}</h3>
+            <span class="small text-secondary fw-medium">Declined RSVPs</span>
         </div>
     </div>
     
-    <!-- Attendance Statistics -->
     <div class="col-md-3">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.05);">
-            <i data-lucide="users" class="mb-2 text-purple" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ attended_count }}</h4>
-            <span class="small text-secondary">Actual Attendees</span>
+        <div class="stat-card accent-purple h-100 text-center">
+            <i data-lucide="users" class="mx-auto mb-2 text-purple" style="width:28px; height:28px;"></i>
+            <h3 class="fw-bold mb-1 text-white">{{ attended_count|default:"0" }}</h3>
+            <span class="small text-secondary fw-medium">Actual Attendees</span>
         </div>
     </div>
 </div>
 
-<!-- AI Transcription Metrics -->
-<div class="row g-4 mb-4 page-transition" style="animation-delay: 0.3s;">
+<!-- AI Intelligence Metrics -->
+<div class="row g-4 mb-4 page-transition">
     <div class="col-12">
-        <h5 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="mic" class="icon-red pulse-ring" style="box-shadow:none;"></i> AI Transcription & Analytics</h5>
+        <h5 class="mb-3 d-flex align-items-center gap-2 text-white fw-bold">
+            <i data-lucide="cpu" class="text-primary" style="width:22px;"></i> AI Intelligence & Processing Metrics
+        </h5>
     </div>
     
-    <!-- Total Transcriptions -->
     <div class="col-md-6">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
-            <i data-lucide="file-audio" class="mb-2 text-danger" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ total_transcriptions }}</h4>
-            <span class="small text-secondary">Total Meeting Transcriptions</span>
+        <div class="stat-card accent-indigo h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-card-icon mb-0">
+                    <i data-lucide="file-audio" style="width:24px; height:24px;"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0 text-white">{{ total_transcriptions|default:"0" }}</h3>
+                    <span class="small text-secondary">Total Meeting Transcriptions Processed</span>
+                </div>
+            </div>
         </div>
     </div>
     
-    <!-- AI Summaries Generated -->
     <div class="col-md-6">
-        <div class="glass-card hover-card h-100 text-center p-3" style="border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05);">
-            <i data-lucide="cpu" class="mb-2 text-warning" style="width:24px; height:24px;"></i>
-            <h4 class="fw-bold mb-1 text-white">{{ ai_summaries }}</h4>
-            <span class="small text-secondary">AI Summaries & Action Items Generated</span>
+        <div class="stat-card accent-purple h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-card-icon mb-0">
+                    <i data-lucide="sparkles" style="width:24px; height:24px;"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0 text-white">{{ ai_summaries|default:"0" }}</h3>
+                    <span class="small text-secondary">AI Summaries & Action Items Generated</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -120,19 +155,18 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Live Clock Logic
     function updateClock() {
         const now = new Date();
         const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
         
-        document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-US', timeOptions);
-        document.getElementById('liveDate').textContent = now.toLocaleDateString('en-US', dateOptions);
+        const timeEl = document.getElementById('liveTime');
+        const dateEl = document.getElementById('liveDate');
+        if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', timeOptions);
+        if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
     }
     setInterval(updateClock, 1000);
     updateClock();
 </script>
-
 {% endblock %}

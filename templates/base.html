@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Meeting Management System{% endblock %}</title>
+    <title>{% block title %}MeetingMind | Enterprise Meeting Workspace{% endblock %}</title>
     
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
@@ -17,7 +22,7 @@
     
     {% block extra_css %}{% endblock %}
     
-    <!-- Theme Initializer to prevent flashing -->
+    <!-- Theme Initializer -->
     <script>
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -25,85 +30,130 @@
 </head>
 <body>
 
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated and request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'root_login' and request.resolver_match.url_name != 'signup' and request.resolver_match.url_name != 'password_reset' and request.resolver_match.url_name != 'verify_otp' and request.resolver_match.url_name != 'set_new_password' %}
+
+
     <div class="app-layout">
-        <!-- Top Navbar -->
-        <header class="header-nav glass-nav">
-            <!-- Top Tier -->
+        <!-- Header Top Navigation Bar -->
+        <header class="header-nav">
+            <!-- Top Tier: Brand & Actions -->
             <div class="header-top">
-                <div class="nav-left d-flex align-items-center gap-3">
-                    <div class="nav-text d-flex align-items-center gap-2">
-                        <i data-lucide="video" class="icon-cyan" style="width:24px;height:24px;"></i>
-                        <h4 class="mb-0">Meeting<span class="text-primary">Mind</span></h4>
-                    </div>
-                    <div class="vertical-divider mx-2 d-none d-md-block"></div>
-                    <h5 class="page-title mb-0 d-none d-md-block">{% block page_title %}Dashboard{% endblock %}</h5>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{% url 'dashboard' %}" class="brand-title">
+                        <div class="brand-icon-box">
+                            <i data-lucide="video" style="width:20px; height:20px;"></i>
+                        </div>
+                        <span>Meeting<span class="text-primary">Mind</span></span>
+                    </a>
                 </div>
                 
-                <div class="nav-right d-flex align-items-center gap-4">
-                    <button id="themeToggleBtn" class="btn btn-link text-decoration-none p-0" style="color: var(--text-secondary);">
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Theme Toggle -->
+                    <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme">
                         <span id="themeIconLightWrapper"><i data-lucide="sun" style="width:20px; height:20px;"></i></span>
                         <span id="themeIconDarkWrapper" class="d-none"><i data-lucide="moon" style="width:20px; height:20px;"></i></span>
                     </button>
 
+                    <!-- Notifications Dropdown -->
                     <div class="dropdown">
-                        <a href="#" class="notification-bell text-decoration-none position-relative" data-bs-toggle="dropdown" id="notificationDropdownToggle" aria-expanded="false">
-                            <i data-lucide="bell" class="icon-yellow"></i>
-                            <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; {% if user.unread_notifications_count == 0 %}display:none;{% endif %}">
+                        <a href="#" class="icon-btn text-decoration-none position-relative" data-bs-toggle="dropdown" id="notificationDropdownToggle" aria-expanded="false">
+                            <i data-lucide="bell" style="width:20px; height:20px;"></i>
+                            <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem; {% if user.unread_notifications_count == 0 %}display:none;{% endif %}">
                                 {{ user.unread_notifications_count }}
                             </span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-end p-0 glass-card mt-2 shadow-lg" aria-labelledby="notificationDropdownToggle" style="width: 380px; border-color: rgba(255,255,255,0.1); overflow: hidden; background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(20px);">
+                        <div class="dropdown-menu dropdown-menu-end p-0 glass-card mt-2 shadow-lg" aria-labelledby="notificationDropdownToggle" style="width: 360px; border-color: var(--border-color); overflow: hidden; background: var(--card-bg);">
                             <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0 text-white fw-bold d-flex align-items-center gap-2"><i data-lucide="bell" style="width:16px;"></i> Notifications</h6>
                                 <a href="{% url 'notifications' %}" class="small text-primary text-decoration-none">View All</a>
                             </div>
-                            <div id="notificationList" style="max-height: 350px; overflow-y: auto;" class="bg-black bg-opacity-25">
+                            <div id="notificationList" style="max-height: 320px; overflow-y: auto;">
                                 <div class="p-4 text-center text-secondary small">Loading...</div>
                             </div>
                         </div>
                     </div>
-                    <div class="user-profile d-flex align-items-center gap-2">
-                        <div class="avatar bg-gradient-blue-purple">{{ user.username.0|upper }}</div>
-                        <div class="user-info d-none d-md-block">
-                            <p class="mb-0 fw-bold">{{ user.username }}</p>
-                            <small class="text-white opacity-75">{{ user.get_role_display }}</small>
+
+                    <div class="vr mx-1 my-auto d-none d-md-block" style="height: 24px; color: var(--border-color);"></div>
+
+                    <!-- User Info & Avatar -->
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar-badge">
+                            {{ user.username.0|upper }}
+                            <span class="online-indicator" title="Online"></span>
+                        </div>
+                        <div class="d-none d-md-block">
+                            <p class="mb-0 fw-semibold text-white small" style="line-height: 1.2;">{{ user.username }}</p>
+                            <small class="text-secondary" style="font-size: 0.75rem;">{{ user.get_role_display }}</small>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Bottom Tier: Links -->
+            <!-- Bottom Tier: Navigation Bar Links -->
             <div class="header-bottom">
                 <nav class="horizontal-nav">
-                    <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="icon-blue"></i> <span class="nav-text">Dashboard</span></a>
-                    <a href="{% url 'meetings' %}" class="nav-item {% if request.resolver_match.url_name == 'meetings' %}active{% endif %}"><i data-lucide="users" class="icon-purple"></i> <span class="nav-text">Meetings</span></a>
-                    <a href="{% url 'calendar' %}" class="nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}"><i data-lucide="calendar" class="icon-cyan"></i> <span class="nav-text">Calendar</span></a>
-                    <a href="{% url 'attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}"><i data-lucide="check-square" class="icon-green"></i> <span class="nav-text">Attendance</span></a>
-                    <a href="{% url 'projects' %}" class="nav-item {% if request.resolver_match.url_name == 'projects' %}active{% endif %}"><i data-lucide="briefcase" class="icon-yellow"></i> <span class="nav-text">Projects</span></a>
-                    <a href="{% url 'mom' %}" class="nav-item {% if request.resolver_match.url_name == 'mom' %}active{% endif %}"><i data-lucide="file-text" class="icon-blue"></i> <span class="nav-text">Minutes of Meeting</span></a>
-                    <a href="{% url 'tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'tasks' %}active{% endif %}"><i data-lucide="list-todo" class="icon-orange"></i> <span class="nav-text">Action Items</span></a>
-                    <a href="{% url 'reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}"><i data-lucide="bar-chart-2" class="icon-blue"></i> <span class="nav-text">Reports</span></a>
-                    <a href="{% url 'ai_features' %}" class="nav-item {% if request.resolver_match.url_name == 'ai_features' %}active{% endif %}"><i data-lucide="cpu" class="icon-purple"></i> <span class="nav-text">AI Features</span></a>
+                    <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{% url 'meetings' %}" class="nav-item {% if request.resolver_match.url_name == 'meetings' %}active{% endif %}">
+                        <i data-lucide="users"></i>
+                        <span>Meetings</span>
+                    </a>
+                    <a href="{% url 'calendar' %}" class="nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}">
+                        <i data-lucide="calendar"></i>
+                        <span>Calendar</span>
+                    </a>
+                    <a href="{% url 'attendance' %}" class="nav-item {% if request.resolver_match.url_name == 'attendance' %}active{% endif %}">
+                        <i data-lucide="check-square"></i>
+                        <span>Attendance</span>
+                    </a>
+                    <a href="{% url 'projects' %}" class="nav-item {% if request.resolver_match.url_name == 'projects' %}active{% endif %}">
+                        <i data-lucide="briefcase"></i>
+                        <span>Projects</span>
+                    </a>
+                    <a href="{% url 'mom' %}" class="nav-item {% if request.resolver_match.url_name == 'mom' %}active{% endif %}">
+                        <i data-lucide="file-text"></i>
+                        <span>Minutes (MoM)</span>
+                    </a>
+                    <a href="{% url 'tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'tasks' %}active{% endif %}">
+                        <i data-lucide="list-todo"></i>
+                        <span>Action Items</span>
+                    </a>
+                    <a href="{% url 'reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                        <i data-lucide="bar-chart-2"></i>
+                        <span>Reports</span>
+                    </a>
+                    <a href="{% url 'ai_features' %}" class="nav-item {% if request.resolver_match.url_name == 'ai_features' %}active{% endif %}">
+                        <i data-lucide="cpu"></i>
+                        <span>AI Workspace</span>
+                    </a>
+                    
                     <div class="flex-grow-1"></div>
-                    <a href="{% url 'settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}"><i data-lucide="settings" class="icon-gray"></i> <span class="nav-text">Settings</span></a>
-                    <a href="{% url 'logout' %}" class="nav-item text-danger"><i data-lucide="log-out" class="icon-red"></i> <span class="nav-text">Logout</span></a>
+                    
+                    <a href="{% url 'settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+                        <i data-lucide="settings"></i>
+                        <span>Settings</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="nav-item text-danger">
+                        <i data-lucide="log-out" class="text-danger"></i>
+                        <span>Logout</span>
+                    </a>
                 </nav>
             </div>
         </header>
 
-            <!-- Page Content -->
-            <div class="container-fluid p-4 page-transition">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}info{% endif %} alert-dismissible fade show" role="alert" style="background: rgba(0,0,0,0.5); border: 1px solid var(--{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}primary{% endif %}); color: white;">
-                            {{ message }}
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-                {% block content %}{% endblock %}
-            </div>
+        <!-- Main Body Content -->
+        <main class="container-fluid p-4 page-transition">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}info{% endif %} alert-dismissible fade show rounded-3 mb-4" role="alert" style="border: 1px solid var(--{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}primary{% endif %});">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
         </main>
     </div>
     {% else %}
@@ -112,7 +162,7 @@
 
     <!-- Global Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
-        <div id="globalToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid var(--glass-border) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 12px;">
+        <div id="globalToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: var(--card-bg); border: 1px solid var(--border-color) !important; box-shadow: var(--shadow-lg); border-radius: 12px;">
             <div class="d-flex">
                 <div class="toast-body d-flex align-items-center gap-2 fw-medium" id="globalToastMessage">
                     <!-- Message goes here -->
@@ -125,10 +175,10 @@
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Initialize Icons -->
+    <!-- Global UI & Interaction Scripts -->
     <script>
       lucide.createIcons();
-      
+
       // Theme Toggle Logic
       const themeToggleBtn = document.getElementById('themeToggleBtn');
       const themeIconLightWrapper = document.getElementById('themeIconLightWrapper');
@@ -136,7 +186,6 @@
       
       if (themeToggleBtn) {
           const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-          
           if (currentTheme === 'light') {
               themeIconDarkWrapper.classList.remove('d-none');
               themeIconLightWrapper.classList.add('d-none');
@@ -177,14 +226,13 @@
           const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
           toast.show();
       }
-
     </script>
     
     {% if global_ongoing_meeting %}
-    <!-- Global Floating Indicator -->
-    <div id="globalRecordingBadge" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: rgba(239, 68, 68, 0.9); border: 1px solid red; padding: 10px 15px; border-radius: 50px; color: white; font-size: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); cursor: pointer;" onclick="window.location.href='/mom/{{ global_ongoing_meeting.id }}/'">
+    <!-- Global Floating Recording Indicator -->
+    <div id="globalRecordingBadge" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: rgba(239, 68, 68, 0.95); border: 1px solid #EF4444; padding: 10px 18px; border-radius: 50px; color: white; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); cursor: pointer;" onclick="window.location.href='/mom/{{ global_ongoing_meeting.id }}/'">
         <div style="width: 10px; height: 10px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
-        Auto-Transcribing Meeting: {{ global_ongoing_meeting.title }}
+        Auto-Transcribing: {{ global_ongoing_meeting.title }}
     </div>
 
     <script>
@@ -205,8 +253,6 @@
         async function startRealAudioCapture() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // Use a standard mimeType if possible
                 let options = {};
                 if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                     options = { mimeType: 'audio/webm;codecs=opus' };
@@ -217,19 +263,12 @@
                 }
                 
                 globalMediaRecorder = new MediaRecorder(stream, options);
-                
-                globalMediaRecorder.onstart = () => {
-                    logEventToBackend('Microphone Capture Started', 'success');
-                };
-                
+                globalMediaRecorder.onstart = () => { logEventToBackend('Microphone Capture Started', 'success'); };
                 globalMediaRecorder.ondataavailable = async (event) => {
                     if (event.data && event.data.size > 0) {
-                        // Send the chunk to the backend
                         let formData = new FormData();
                         formData.append('audio_blob', event.data, 'chunk.webm');
-                        
                         try {
-                            // Show interim UI indicator if on mom page
                             let box = document.getElementById('liveTranscriptBox');
                             if (box) {
                                 let interimDiv = document.getElementById('interimDiv');
@@ -241,19 +280,16 @@
                                 }
                                 interimDiv.innerHTML = `
                                     <div class="d-flex align-items-center gap-2 mb-1">
-                                        <strong class="text-warning small"><i data-lucide="loader" class="spin-animation" style="width:12px;"></i> AI Processing Audio Chunk...</strong>
+                                        <strong class="text-warning small"><i data-lucide="loader" class="spin-animation" style="width:12px;"></i> AI Processing Audio...</strong>
                                     </div>
                                 `;
                                 box.scrollTop = box.scrollHeight;
                                 lucide.createIcons();
                             }
-                            
-                            // Send audio to the server-side transcription engine
                             await fetch('/mom/process_audio/' + globalMeetingId + '/', {
                                 method: 'POST',
                                 body: formData
                             });
-                            
                             if (box) {
                                 let interimDiv = document.getElementById('interimDiv');
                                 if (interimDiv) interimDiv.remove();
@@ -263,40 +299,25 @@
                         }
                     }
                 };
-                
                 globalMediaRecorder.onerror = (event) => {
-                    console.error("MediaRecorder error", event.error);
                     logEventToBackend('Microphone Error: ' + event.error, 'error');
                 };
-                
-                // Capture chunks every 6 seconds by stopping and restarting
-                // This ensures each Blob has a proper WebM header for ffmpeg to decode
                 globalMediaRecorder.start();
-                
                 setInterval(() => {
                     if (globalMediaRecorder && globalMediaRecorder.state === 'recording') {
                         globalMediaRecorder.stop();
-                        setTimeout(() => {
-                            try { globalMediaRecorder.start(); } catch(e){}
-                        }, 50);
+                        setTimeout(() => { try { globalMediaRecorder.start(); } catch(e){} }, 50);
                     }
                 }, 6000);
             } catch (err) {
-                console.error("Failed to start audio capture:", err);
-                logEventToBackend('Microphone Access Denied or Unavailable', 'error');
+                logEventToBackend('Microphone Access Denied', 'error');
             }
         }
-        
-        // Expose to window so mom.html can manually force it if needed
         window.globalRecognition = {
             start: startRealAudioCapture,
             stop: () => { if (globalMediaRecorder) globalMediaRecorder.stop(); }
         };
-
-        // Try to auto-start
-        setTimeout(() => {
-            startRealAudioCapture();
-        }, 1000);
+        setTimeout(() => { startRealAudioCapture(); }, 1000);
     });
     </script>
     {% endif %}
@@ -334,7 +355,6 @@
                             notifList.innerHTML = '<div class="p-4 text-center text-secondary small">No notifications yet.</div>';
                             return;
                         }
-                        
                         let html = '';
                         data.notifications.forEach(n => {
                             let bgClass = n.is_read ? '' : 'bg-primary bg-opacity-10';
@@ -365,18 +385,12 @@
                             item.addEventListener('click', function(e) {
                                 let id = this.getAttribute('data-id');
                                 let meetingId = this.getAttribute('data-meeting');
-                                
-                                // Mark as read
                                 fetch(`/notifications/mark-read/${id}/`)
                                     .then(r => r.json())
                                     .then(d => {
                                         if (d.status === 'success') {
-                                            if (meetingId) {
-                                                window.location.href = '/mom/' + meetingId + '/';
-                                            } else {
-                                                fetchNotifications();
-                                                fetchUnreadCount();
-                                            }
+                                            if (meetingId) { window.location.href = '/mom/' + meetingId + '/'; } 
+                                            else { fetchNotifications(); fetchUnreadCount(); }
                                         }
                                     });
                             });
@@ -385,11 +399,9 @@
                 });
         }
 
-        notifDropdownToggle.addEventListener('show.bs.dropdown', function () {
-            fetchNotifications();
-        });
-
-        // Real-time polling every 5 seconds
+        if (notifDropdownToggle) {
+            notifDropdownToggle.addEventListener('show.bs.dropdown', function () { fetchNotifications(); });
+        }
         setInterval(fetchUnreadCount, 5000);
     });
     </script>

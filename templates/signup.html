@@ -6,32 +6,33 @@
 {% block extra_css %}
 <style>
 body {
-    background-color: #F8F9FA; /* Light mode for the signup page specifically */
+    background-color: #FFFFFF;
 }
+
 
 .signup-container {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 30px 20px;
 }
 
 .neon-split-card {
     width: 100%;
-    max-width: 850px;
-    min-height: 500px;
-    background: linear-gradient(110deg, #295A85 45%, #FFFFFF 45.1%);
-    border-radius: 12px;
-    box-shadow: 0 0 25px rgba(13, 110, 253, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(13, 110, 253, 0.2);
+    max-width: 900px;
+    min-height: 600px;
+    background: linear-gradient(110deg, var(--primary) 42%, var(--card-bg) 42.1%);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
     display: flex;
     overflow: hidden;
     position: relative;
 }
 
 .split-left {
-    flex: 1.1;
+    flex: 1;
     padding: 60px 40px;
     display: flex;
     flex-direction: column;
@@ -40,8 +41,8 @@ body {
 }
 
 .split-right {
-    flex: 1;
-    padding: 50px 40px;
+    flex: 1.2;
+    padding: 40px 45px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -52,66 +53,78 @@ body {
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 15px;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
-/* Custom form inputs */
 .line-input-group {
     position: relative;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 .line-input {
     width: 100%;
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-    color: #212529;
-    padding: 10px 30px 10px 0;
-    font-size: 0.9rem;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 30px 8px 0;
+    font-size: 0.925rem;
     transition: border-color 0.3s;
 }
 .line-input:focus {
     outline: none;
-    border-bottom: 1px solid #295A85;
+    border-bottom: 2px solid var(--primary);
+}
+select.line-input.role-placeholder-active {
+    color: var(--text-secondary) !important;
+}
+select.line-input option {
+    background-color: var(--card-bg, #1A202C);
+    color: var(--text-primary, #F7FAFC);
+    padding: 10px;
+}
+select.line-input option:disabled {
+    color: var(--text-secondary);
 }
 .line-input::placeholder {
-    color: rgba(0, 0, 0, 0.4);
+    color: var(--text-secondary);
 }
+
 .input-icon-right {
     position: absolute;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
-    color: #6C757D;
-    width: 14px;
+    color: var(--text-secondary);
+    width: 16px;
 }
 
-.btn-neon-blue {
-    background: linear-gradient(90deg, #295A85, #1E4364);
+.btn-auth {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: white;
     border: none;
-    border-radius: 30px;
+    border-radius: 10px;
     padding: 12px;
     font-weight: 600;
     width: 100%;
     margin-top: 10px;
-    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    box-shadow: var(--shadow-md);
     transition: all 0.3s;
 }
-.btn-neon-blue:hover {
-    box-shadow: 0 4px 25px rgba(13, 110, 253, 0.5);
+.btn-auth:hover {
+    box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
+    color: white;
 }
 
 @media (max-width: 768px) {
     .neon-split-card {
         flex-direction: column;
-        background: #FFFFFF;
+        background: var(--card-bg);
     }
     .split-left {
-        background: linear-gradient(135deg, #295A85, #16334D);
+        background: linear-gradient(135deg, var(--primary), var(--primary-hover));
         flex: none;
-        padding: 40px 20px;
+        padding: 35px 20px;
     }
 }
 </style>
@@ -123,51 +136,70 @@ body {
         
         <!-- Left Side -->
         <div class="split-left">
-            <h1 class="neon-title">WELCOME<br>BACK!</h1>
+            <h1 class="neon-title text-white">JOIN<br>MEETINGMIND!</h1>
+            <p class="text-white opacity-90 mb-0">Create your enterprise account to access AI meeting summaries, real-time collaboration, and task management.</p>
         </div>
 
         <!-- Right Side -->
         <div class="split-right">
-            <h3 class="text-dark text-center mb-5 fw-bold">Sign Up</h3>
+            <h3 class="text-primary text-center mb-4 fw-bold">Create Account</h3>
             
             {% if error %}
-            <div class="alert alert-danger py-2 px-3 mb-4" style="font-size: 0.85rem; border-radius: 8px;">{{ error }}</div>
+            <div class="alert alert-danger py-2 px-3 mb-3" style="font-size: 0.85rem; border-radius: 8px;">{{ error }}</div>
             {% endif %}
 
             <form method="POST">
                 {% csrf_token %}
                 
+                <!-- Full Name -->
                 <div class="line-input-group">
-                    <select name="role" class="line-input" style="color: rgba(0,0,0,0.6);" required>
-                        <option value="" disabled selected>Select Role</option>
-                        <option value="EMPLOYEE" class="bg-white text-dark">Employee</option>
-                        <option value="INTERN" class="bg-white text-dark">Intern</option>
-                        <option value="TL" class="bg-white text-dark">Team Leader</option>
-                        <option value="ADMIN" class="bg-white text-dark">Owner/Admin</option>
-                    </select>
-                    <i data-lucide="briefcase" class="input-icon-right"></i>
-                </div>
-
-                <div class="line-input-group">
-                    <input type="text" name="username" class="line-input" placeholder="Username" required>
+                    <input type="text" name="full_name" class="line-input" placeholder="Full Name *" required>
                     <i data-lucide="user" class="input-icon-right"></i>
                 </div>
 
+                <!-- Role Selection -->
                 <div class="line-input-group">
-                    <input type="email" name="email" class="line-input" placeholder="Email" required>
+                    <select name="role" class="line-input role-placeholder-active" required style="cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;" onchange="this.classList.remove('role-placeholder-active');">
+                        <option value="" disabled selected hidden>Select Role *</option>
+                        <option value="TL">Team Leader</option>
+                        <option value="ADMIN">Owner/Admin</option>
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="INTERN">Intern</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="input-icon-right" style="pointer-events: none;"></i>
+                </div>
+
+                <!-- Work Email -->
+                <div class="line-input-group">
+                    <input type="email" name="email" class="line-input" placeholder="Work Email *" required>
                     <i data-lucide="mail" class="input-icon-right"></i>
                 </div>
 
-                <div class="line-input-group mb-4">
-                    <input type="password" name="password" class="line-input" placeholder="Password" required>
+                <!-- Phone Number (Optional) -->
+                <div class="line-input-group">
+                    <input type="tel" name="phone_number" class="line-input" placeholder="Phone Number (Optional)">
+                    <i data-lucide="phone" class="input-icon-right"></i>
+                </div>
+
+                <!-- Password -->
+                <div class="line-input-group">
+                    <input type="password" name="password" class="line-input" placeholder="Password *" required>
                     <i data-lucide="lock" class="input-icon-right"></i>
                 </div>
 
-                <button type="submit" class="btn-neon-blue">Sign Up</button>
+                <!-- Confirm Password -->
+                <div class="line-input-group mb-4">
+                    <input type="password" name="confirm_password" class="line-input" placeholder="Confirm Password *" required>
+                    <i data-lucide="shield-check" class="input-icon-right"></i>
+                </div>
+
+                <!-- Create Account Button -->
+                <button type="submit" class="btn-auth">Create Account</button>
             </form>
             
-            <div class="text-center mt-4">
-                <small class="text-secondary" style="opacity: 0.8;">Already have an account? <a href="{% url 'login' %}" style="color: #295A85; text-decoration: none; font-weight: 600;">Login</a></small>
+            <!-- Login Link -->
+            <div class="text-center mt-3">
+                <span class="text-secondary small">Already have an account? <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-bold">Login</a></span>
             </div>
         </div>
 

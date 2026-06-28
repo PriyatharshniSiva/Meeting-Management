@@ -9,10 +9,13 @@ class CustomUser(AbstractUser):
         ('INTERN', 'Intern'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='EMPLOYEE')
+    company_name = models.CharField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
 
     @property
     def unread_notifications_count(self):
         return self.notifications.filter(is_read=False).count()
+
 
 class Meeting(models.Model):
     TYPE_CHOICES = (
