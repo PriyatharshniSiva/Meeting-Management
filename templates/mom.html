@@ -7,8 +7,8 @@
     <div class="col-12">
         <div class="glass-card p-4 d-flex justify-content-between align-items-center" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
             <div>
-                <h4 class="text-white mb-1"><i data-lucide="file-audio" class="icon-purple me-2"></i> Meeting Minutes (MoM)</h4>
-                <p class="text-secondary mb-0 small">Select a meeting to view or upload its Zoom transcript</p>
+                <h4 class="text-white mb-1"><i data-lucide="file-audio" class="icon-purple me-2"></i> AI-Powered Meeting Minutes</h4>
+                <p class="text-secondary mb-0 small">Select a meeting to view its AI transcript or upload an audio file for processing.</p>
             </div>
             <div style="min-width: 300px;">
                 <select class="form-select glass-input text-white" onchange="if(this.value) window.location.href='/mom/' + this.value + '/';">
@@ -30,202 +30,192 @@
         <div class="p-5 glass-card d-inline-block border-secondary border-opacity-25">
             <i data-lucide="inbox" class="text-secondary mb-3" style="width: 48px; height: 48px;"></i>
             <h5 class="text-white mb-2">No Meeting Selected</h5>
-            <p class="text-secondary mb-0">Please select a meeting from the dropdown above to view its live transcript.</p>
+            <p class="text-secondary mb-0">Please select a meeting from the dropdown above to manage its transcript.</p>
         </div>
     </div>
 </div>
 {% else %}
 
 <div class="row g-4 page-transition" style="animation-delay: 0.1s;">
+    <!-- LEFT COLUMN: Main Processing / Transcript Area -->
     <div class="col-lg-8">
         <div class="glass-card h-100 position-relative">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="mic" class="icon-red pulse-ring" style="box-shadow:none;"></i> Live Auto-Recording</h5>
-                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary px-3 py-2 rounded-pill"><i data-lucide="globe" style="width:14px;"></i> English Transcription Active</span>
-            </div>
-            
-            <!-- Live Audio Waveform -->
-            <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239,68,68,0.2);">
-                <style>
-                    @keyframes wave-pulse {
-                        0% { height: 20%; }
-                        100% { height: 100%; }
-                    }
-                </style>
-                <div class="d-flex align-items-end gap-1" style="height: 30px;">
-                    <div class="bg-danger rounded" style="width: 4px; height: 100%; animation: wave-pulse 1s infinite alternate;"></div>
-                    <div class="bg-danger rounded" style="width: 4px; height: 40%; animation: wave-pulse 0.8s infinite alternate-reverse;"></div>
-                    <div class="bg-danger rounded" style="width: 4px; height: 80%; animation: wave-pulse 1.2s infinite alternate;"></div>
-                    <div class="bg-danger rounded" style="width: 4px; height: 60%; animation: wave-pulse 0.9s infinite alternate-reverse;"></div>
-                    <div class="bg-danger rounded" style="width: 4px; height: 90%; animation: wave-pulse 1.1s infinite alternate;"></div>
-                    <div class="bg-danger rounded" style="width: 4px; height: 50%; animation: wave-pulse 1s infinite alternate-reverse;"></div>
-                </div>
-                <div class="ms-2">
-                    <strong class="text-white d-block">Recording in Progress...</strong>
-                    <small class="text-danger fw-bold d-flex align-items-center gap-1"><span class="pulse-ring position-relative" style="width:6px;height:6px;background:var(--danger);box-shadow:none;"></span> Live Audio Stream</small>
-                </div>
-                <span class="text-secondary small ms-auto fw-bold">14:02 elapsed</span>
-            </div>
-
-            <!-- Transcript Feed -->
-            <div class="mb-3">
-                <label class="form-label text-secondary small text-uppercase"><i data-lucide="align-left" class="icon-purple" style="width:14px;"></i> Live English Transcript</label>
-                <div class="form-control glass-input" style="height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2);">
-                    
-                    {% if minutes and minutes.status == 'NO_TRANSCRIPT' %}
-                        <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center">
-                            <i data-lucide="mic-off" class="text-secondary mb-3" style="width: 48px; height: 48px;"></i>
-                            <h5 class="text-white">No Transcript Available</h5>
-                            <p class="text-secondary small">This meeting ended without any audio being recorded. <br>The AI cannot generate a summary.</p>
-                        </div>
-                    {% elif transcript_lines or is_ongoing %}
-                        {% if is_ongoing %}
-                        <div class="position-sticky top-0 text-center mb-3 z-1">
-                            <span class="badge bg-danger border border-danger text-white small pulse-ring">Live Mic Recording Active</span>
-                            <button class="btn btn-sm btn-danger d-block mx-auto mt-2" onclick="try{globalRecognition.start(); showToast('Microphone started manually', 'success');}catch(e){showToast('Microphone is already running or blocked', 'error');}">Force Start Mic</button>
-                        </div>
-                        {% else %}
-                        <div class="position-sticky top-0 text-center mb-3 z-1">
-                            <span class="badge bg-dark border border-secondary text-secondary small">Meeting Ended</span>
-                        </div>
-                        {% endif %}
-                        
-                        <div id="liveTranscriptBox" class="flex-grow-1 mb-3">
-                        {% for line in transcript_lines %}
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center gap-2 mb-1">
-                                <strong class="text-primary small">{{ line.speaker }}</strong>
-                            </div>
-                            <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">{{ line.text }}</p>
-                        </div>
-                        {% endfor %}
-                        </div>
-                        
-                        {% if not is_ongoing and minutes and minutes.status != 'PENDING' %}
-                        <div class="mt-3 text-secondary small d-flex align-items-center gap-2">
-                            <i data-lucide="check-circle" class="text-success" style="width:12px;"></i> Transcript Complete
-                        </div>
-                        {% endif %}
-                        
-                    {% else %}
-                        <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center">
-                            <i data-lucide="loader" class="text-secondary spin-animation mb-3" style="width: 32px; height: 32px;"></i>
-                            <h6 class="text-white">Waiting for Meeting...</h6>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <div class="d-flex align-items-center gap-3">
-                    {% if is_ongoing %}
-                        <span class="badge bg-success bg-opacity-25 text-success px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="refresh-cw" class="spin-animation" style="width:14px;"></i> Live Auto-Syncing</span>
-                    {% elif minutes.status == 'GENERATING' %}
-                        <span class="badge bg-warning bg-opacity-25 text-warning px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="cpu" class="spin-animation" style="width:14px;"></i> Generating Summary...</span>
-                    {% elif minutes.status == 'READY' %}
-                        <span class="badge bg-primary bg-opacity-25 text-primary px-3 py-2 rounded-pill d-flex align-items-center gap-2"><i data-lucide="check" style="width:14px;"></i> Processing Complete</span>
-                    {% endif %}
-                </div>
+                <h5 class="text-white m-0 d-flex align-items-center gap-2">
+                    <i data-lucide="mic" class="icon-red pulse-ring" style="box-shadow:none;"></i> 
+                    {% if minutes and minutes.status == 'READY' %}Transcript & AI Analytics{% else %}AI Audio Processing Pipeline{% endif %}
+                </h5>
+                {% if minutes and minutes.status == 'READY' %}
                 <div class="d-flex gap-2">
-                    {% if minutes and minutes.status == 'READY' %}
-                        {% if minutes.pdf_export %}
-                        <a href="{{ minutes.pdf_export.url }}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;" download>
-                            <i data-lucide="file-text" style="width:14px; margin-right:4px;"></i> PDF
-                        </a>
-                        {% endif %}
-                        {% if minutes.docx_export %}
-                        <a href="{{ minutes.docx_export.url }}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;" download>
-                            <i data-lucide="file" style="width:14px; margin-right:4px;"></i> Word
-                        </a>
-                        {% endif %}
-                    {% endif %}
+                    <a href="{% url 'export_transcript' selected_meeting.id 'txt' %}" class="btn btn-sm btn-outline-secondary" title="Export as Text"><i data-lucide="file-text" style="width:14px;"></i> TXT</a>
+                    <a href="{% url 'export_transcript' selected_meeting.id 'docx' %}" class="btn btn-sm btn-outline-primary" title="Export as Word"><i data-lucide="file" style="width:14px;"></i> DOCX</a>
+                    <a href="{% url 'export_transcript' selected_meeting.id 'pdf' %}" class="btn btn-sm btn-outline-danger" title="Export as PDF"><i data-lucide="file-digit" style="width:14px;"></i> PDF</a>
                 </div>
+                {% endif %}
             </div>
+            
+            {% if not minutes or minutes.status == 'PENDING' %}
+                <!-- Upload Interface -->
+                <div class="d-flex flex-column align-items-center justify-content-center py-5 rounded" style="border: 2px dashed rgba(255,255,255,0.2); background: rgba(0,0,0,0.1);" id="uploadZone">
+                    <i data-lucide="upload-cloud" class="text-primary mb-3" style="width: 64px; height: 64px;"></i>
+                    <h5 class="text-white">Upload Meeting Audio</h5>
+                    <p class="text-secondary small text-center mb-4">Supported formats: MP3, WAV, M4A, AAC<br>Max file size: 50MB</p>
+                    
+                    <form id="audioUploadForm" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" id="audioFileInput" name="audio_file" accept=".mp3, .wav, .m4a, .aac" class="d-none" onchange="handleFileSelect(this)">
+                        <button type="button" class="btn btn-primary rounded-pill px-4" onclick="document.getElementById('audioFileInput').click()">
+                            Browse Files
+                        </button>
+                    </form>
+                    <p id="selectedFileName" class="text-success small mt-3 d-none fw-bold"></p>
+                    <button type="button" id="startUploadBtn" class="btn btn-success mt-2 d-none" onclick="startUpload()">Process Audio</button>
+                </div>
+            
+            {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
+                <!-- Processing Interface -->
+                <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                    <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h5 class="text-white mb-2" id="processingStateText">
+                        {% if minutes.status == 'GENERATING' %}Generating AI Summary...{% else %}Processing Audio...{% endif %}
+                    </h5>
+                    <p class="text-secondary small mb-4 text-center">Please wait while our AI transcription engine analyzes the audio,<br>performs speaker diarization, and extracts key insights.</p>
+                    
+                    <!-- Progress Tracker -->
+                    <div class="w-75">
+                        <div class="progress mb-2" style="height: 8px; background: rgba(255,255,255,0.1);">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="progressBar" style="width: {% if minutes.status == 'GENERATING' %}80%{% else %}40%{% endif %};"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-secondary" style="font-size: 0.7rem;">
+                            <span>Audio Uploaded</span>
+                            <span>Detecting Speakers</span>
+                            <span>Speech-to-Text</span>
+                            <span>AI Summary</span>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif minutes.status == 'READY' %}
+                <!-- Transcript View -->
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div class="input-group" style="max-width: 300px;">
+                        <span class="input-group-text glass-input border-end-0 text-secondary"><i data-lucide="search" style="width:14px;"></i></span>
+                        <input type="text" class="form-control glass-input border-start-0 text-white" id="searchInput" placeholder="Search transcript..." onkeyup="filterTranscript()">
+                    </div>
+                </div>
+                
+                <div class="form-control glass-input" style="height: 500px; overflow-y: auto; background: rgba(0,0,0,0.2);" id="transcriptContainer">
+                    {% for segment in transcript_lines %}
+                    <div class="mb-4 transcript-segment">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary" style="font-size: 0.65rem;">{{ segment.timestamp }}</span>
+                            <strong class="text-primary speaker-name">{{ segment.speaker }}</strong>
+                        </div>
+                        <p class="text-white small m-0 ps-2 transcript-text" style="border-left: 2px solid var(--primary); font-size: 0.95rem; line-height: 1.6;">{{ segment.text }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
     </div>
     
+    <!-- RIGHT COLUMN: Speaker Panel & AI Summary -->
     <div class="col-lg-4">
+        
+        <!-- Speaker Panel -->
+        <div class="glass-card mb-4" style="border-color: rgba(59, 130, 246, 0.2);">
+            <h6 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="users" class="icon-blue"></i> Speaker Analysis</h6>
+            
+            {% if minutes.status == 'READY' and minutes.speaker_metrics %}
+                <div class="d-flex flex-column gap-3">
+                    {% for speaker, stats in minutes.speaker_metrics.items %}
+                    <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-primary">{{ speaker }}</strong>
+                            <span class="badge bg-primary bg-opacity-25 text-white">{{ stats.percentage }}%</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 4px; background: rgba(255,255,255,0.1);">
+                            <div class="progress-bar bg-primary" style="width: {{ stats.percentage }}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-secondary" style="font-size: 0.75rem;">
+                            <span><i data-lucide="clock" style="width:12px;"></i> {{ stats.time }}</span>
+                            <span><i data-lucide="mic" style="width:12px;"></i> {{ stats.count }} segments</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% elif minutes.status == 'PENDING' or not minutes %}
+                <p class="text-secondary small text-center py-3 m-0">Upload audio to generate speaker analytics.</p>
+            {% else %}
+                <div class="d-flex justify-content-center py-4">
+                    <div class="spinner-grow text-primary spinner-grow-sm" role="status"></div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- AI Summary & Actions -->
         <div class="glass-card mb-4" style="border-color: rgba(245, 158, 11, 0.2);">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="text-warning mb-0 d-flex align-items-center gap-2"><i data-lucide="cpu" class="icon-yellow pulse-ring" style="width:18px; box-shadow:none;"></i> AI Summary & Actions</h6>
                 {% if minutes.status == 'READY' %}
-                    <span class="badge bg-success bg-opacity-25 text-success border border-success">Minutes Ready</span>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success">Ready</span>
                 {% elif minutes.status == 'GENERATING' %}
                     <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Generating...</span>
-                {% elif minutes.status == 'NO_TRANSCRIPT' %}
-                    <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary">N/A</span>
-                {% else %}
-                    <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary">Waiting...</span>
                 {% endif %}
             </div>
             
             <div id="aiSummarySection">
-                {% if minutes.status != 'READY' and minutes.status != 'GENERATING' %}
-                <div class="mb-3">
-                    <a href="{% url 'simulate_zoom_webhook' selected_meeting.id %}" class="btn btn-outline-warning w-100" style="border-radius: 8px;">
-                        <i data-lucide="zap" style="width: 16px; margin-right: 5px;"></i> Simulate Zoom Webhook (Auto-Process)
-                    </a>
-                </div>
+                {% if minutes.status == 'READY' and minutes.ai_summary %}
+                    <p class="text-secondary small">{{ minutes.ai_summary }}</p>
+                    
+                    {% if minutes.decisions %}
+                    <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
+                        <h6 class="text-warning small mb-2"><i data-lucide="check-square" style="width:14px;"></i> Key Decisions</h6>
+                        <ul class="text-white small mb-0 ps-3">
+                            {% for d in minutes.decisions %}
+                            <li>{{ d }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    {% if minutes.action_items_raw %}
+                    <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
+                        <h6 class="text-warning small mb-2"><i data-lucide="list-todo" style="width:14px;"></i> Action Items</h6>
+                        <ul class="text-white small mb-0 ps-3">
+                            {% for task in minutes.action_items_raw %}
+                            <li><strong>{{ task.assignee }}:</strong> {{ task.task }} <span class="badge bg-danger bg-opacity-25 text-danger ms-1" style="font-size: 0.6rem;">{{ task.priority }}</span></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
+                    <div class="d-flex flex-column align-items-center justify-content-center py-4">
+                        <i data-lucide="loader" class="text-warning spin-animation mb-3" style="width: 32px; height: 32px;"></i>
+                        <p class="text-secondary small text-center m-0">Processing data...</p>
+                    </div>
+                {% else %}
+                    <p class="text-secondary small text-center py-3 m-0">Upload audio to automatically generate summaries and action items.</p>
                 {% endif %}
-            {% if minutes.status == 'READY' and minutes.ai_summary %}
-                <p class="text-secondary small">{{ minutes.ai_summary }}</p>
-                
-                {% if minutes.decisions %}
-                <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
-                    <h6 class="text-warning small mb-2"><i data-lucide="check-square" style="width:14px;"></i> Key Decisions</h6>
-                    <ul class="text-white small mb-0 ps-3">
-                        {% for d in minutes.decisions %}
-                        <li>{{ d }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-                
-                {% if minutes.action_items_raw %}
-                <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
-                    <h6 class="text-warning small mb-2"><i data-lucide="list-todo" style="width:14px;"></i> Action Items</h6>
-                    <ul class="text-white small mb-0 ps-3">
-                        {% for task in minutes.action_items_raw %}
-                        <li><strong>{{ task.owner }}:</strong> {{ task.task }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-                
-            {% elif minutes.status == 'GENERATING' %}
-                <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                    <i data-lucide="loader" class="text-warning spin-animation mb-3" style="width: 48px; height: 48px;"></i>
-                    <h6 class="text-white">Generating AI Summary...</h6>
-                    <p class="text-secondary small text-center">Processing transcript, extracting action items, and compiling minutes.</p>
-                </div>
-            {% elif minutes.status == 'NO_TRANSCRIPT' %}
-                <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                    <p class="text-secondary small text-center m-0">No transcript available to summarize.</p>
-                </div>
-            {% else %}
-                <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                    <p class="text-secondary small text-center m-0">The AI summary will be generated automatically when the meeting ends.</p>
-                </div>
-            {% endif %}
             </div>
         </div>
         
+        <!-- Live Processing Logs -->
         <div class="glass-card h-100">
-            <h5 class="text-white mb-3 d-flex align-items-center gap-2">
-                <i data-lucide="history" class="icon-green"></i> Auto-Sync Timeline
-            </h5>
-            <div class="timeline mt-4" id="timelineContainer" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px;">
+            <h6 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="terminal" class="icon-green"></i> System Logs</h6>
+            <div class="timeline mt-3" id="timelineContainer" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px; max-height: 250px; overflow-y: auto;">
                 {% if minutes and minutes.processing_logs %}
                     {% for log in minutes.processing_logs %}
                     <div class="mb-3 position-relative">
-                        <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: {% if log.type == 'error' %}var(--danger){% elif log.type == 'success' %}var(--success){% else %}var(--primary){% endif %};"></div>
-                        <strong class="{% if log.type == 'error' %}text-danger{% else %}text-white{% endif %} d-block">{{ log.event }}</strong>
-                        <small class="text-secondary">{{ log.timestamp }}</small>
+                        <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+                        <strong class="text-white d-block small">{{ log.message }}</strong>
+                        <small class="text-secondary" style="font-size: 0.65rem;">{{ log.timestamp|slice:"11:19" }}</small>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div class="mb-3 position-relative" id="emptyTimeline">
-                        <small class="text-secondary">Waiting for recording to start...</small>
+                    <div class="mb-3 position-relative">
+                        <small class="text-secondary">System is standing by.</small>
                     </div>
                 {% endif %}
             </div>
@@ -237,161 +227,109 @@
 
 {% block extra_js %}
 <script>
-    window.addEventListener('DOMContentLoaded', (event) => {
-        {% if is_ongoing %}
-        setTimeout(() => {
-            try {
-                startLiveRecording();
-            } catch(e) {
-                console.log("Browser prevented auto-start. Click to start.");
-            }
-        }, 800);
-        {% endif %}
-    });
+    function handleFileSelect(input) {
+        if(input.files && input.files[0]) {
+            let file = input.files[0];
+            document.getElementById('selectedFileName').textContent = file.name;
+            document.getElementById('selectedFileName').classList.remove('d-none');
+            document.getElementById('startUploadBtn').classList.remove('d-none');
+        }
+    }
 
-    function generateAISummary() {
-        let btn = document.getElementById('btnAISummary');
-        let originalText = btn.innerHTML;
+    function startUpload() {
+        let fileInput = document.getElementById('audioFileInput');
+        if(!fileInput.files || !fileInput.files[0]) return;
         
-        // Show loading state
-        btn.innerHTML = '<i data-lucide="loader" class="icon-yellow" style="animation: spin 1s linear infinite; width:16px;"></i> Generating...';
-        lucide.createIcons();
+        let formData = new FormData();
+        formData.append('audio_file', fileInput.files[0]);
         
-        // Simulate network delay
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            document.getElementById('aiSummaryResult').classList.remove('d-none');
-            lucide.createIcons();
-        }, 2500);
+        // CSRF Token
+        let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        let btn = document.getElementById('startUploadBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+        btn.disabled = true;
+        
+        fetch("{% if selected_meeting %}{% url 'upload_audio_for_transcription' selected_meeting.id %}{% endif %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert("Upload failed: " + data.message);
+                btn.innerHTML = 'Process Audio';
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred during upload.");
+            btn.innerHTML = 'Process Audio';
+            btn.disabled = false;
+        });
     }
-    
-    function startLiveRecording() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            alert("Your browser does not support the Web Speech API. Please use Google Chrome.");
-            return;
+
+    function filterTranscript() {
+        let input = document.getElementById('searchInput');
+        let filter = input.value.toUpperCase();
+        let container = document.getElementById('transcriptContainer');
+        let segments = container.getElementsByClassName('transcript-segment');
+
+        for (let i = 0; i < segments.length; i++) {
+            let textElement = segments[i].getElementsByClassName('transcript-text')[0];
+            let speakerElement = segments[i].getElementsByClassName('speaker-name')[0];
+            let txtValue = (textElement.textContent || textElement.innerText) + " " + (speakerElement.textContent || speakerElement.innerText);
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                segments[i].style.display = "";
+            } else {
+                segments[i].style.display = "none";
+            }
         }
-        
-        // Let the global script handle the actual recording.
     }
-    
-    function stopLiveRecording() {
-        if(typeof globalRecognition !== 'undefined') {
-            globalRecognition.stop();
-        }
-        showToast("Transcript saved and recording stopped.", "success");
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
-    }
-    
-    // Live Sync Polling
-    {% if selected_meeting %}
-        {% if is_ongoing %}
-        let currentLineCount = {{ transcript_lines|length }};
-        let syncInterval = setInterval(() => {
-            fetch('/mom/latest/{{ selected_meeting.id }}/')
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    if (data.is_ongoing === false) {
-                        clearInterval(syncInterval);
-                        if (typeof globalRecognition !== 'undefined') {
-                            globalRecognition.stop();
-                        }
-                        showToast("Meeting ended. Automatically generating AI Summary...", "warning");
-                        
-                        // Fire generation automatically!
-                        fetch('/mom/generate_summary/{{ selected_meeting.id }}/')
-                        .then(() => {
-                            window.location.reload();
-                        });
-                        
-                        // Visually change state immediately to GENERATING so user knows
-                        document.getElementById('aiSummarySection').innerHTML = `
-                            <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                                <i data-lucide="loader" class="text-warning spin-animation mb-3" style="width: 48px; height: 48px;"></i>
-                                <h6 class="text-white">Generating AI Summary...</h6>
-                                <p class="text-secondary small text-center">Processing transcript, extracting action items, and compiling minutes.</p>
+
+    // Polling logic for background processing
+    {% if minutes and minutes.status in 'PROCESSING,GENERATING' %}
+    let pollInterval = setInterval(() => {
+        fetch("{% url 'check_transcription_status' selected_meeting.id %}")
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                if(data.state === 'READY' || data.state === 'PENDING') {
+                    // It finished successfully or errored out. Reload to show UI.
+                    window.location.reload();
+                } else {
+                    // Update progress UI dynamically if needed, or just let it spin
+                    if(data.state === 'GENERATING') {
+                        document.getElementById('processingStateText').textContent = 'Generating AI Summary...';
+                        document.getElementById('progressBar').style.width = '80%';
+                    }
+                    
+                    // Update timeline
+                    let tlContainer = document.getElementById('timelineContainer');
+                    if (tlContainer && data.logs) {
+                        let logsHTML = '';
+                        data.logs.forEach(log => {
+                            let timeStr = log.timestamp.substring(11, 19);
+                            logsHTML += `
+                            <div class="mb-3 position-relative">
+                                <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+                                <strong class="text-white d-block small">${log.message}</strong>
+                                <small class="text-secondary" style="font-size: 0.65rem;">${timeStr}</small>
                             </div>
-                        `;
-                        lucide.createIcons();
-                        return;
-                    }
-                    
-                    if (data.lines && data.lines.length > currentLineCount) {
-                        let box = document.getElementById('liveTranscriptBox');
-                        let interimDiv = document.getElementById('interimDiv');
-                        let interimHTML = interimDiv ? interimDiv.outerHTML : '';
-                        
-                        let newHTML = '';
-                        data.lines.forEach(line => {
-                            newHTML += `
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <strong class="text-primary small">${line.speaker}</strong>
-                                </div>
-                                <p class="text-secondary small m-0 ps-2" style="border-left: 2px solid var(--primary);">${line.text}</p>
-                            </div>`;
+                            `;
                         });
-                        
-                        if (box) {
-                            box.innerHTML = newHTML + interimHTML;
-                            box.scrollTop = box.scrollHeight;
-                        }
-                        currentLineCount = data.lines.length;
-                    }
-                    
-                    if (data.logs && data.logs.length > 0) {
-                        let tlContainer = document.getElementById('timelineContainer');
-                        if (tlContainer) {
-                            let logsHTML = '';
-                            data.logs.forEach(log => {
-                                let color = log.type === 'error' ? 'var(--danger)' : (log.type === 'success' ? 'var(--success)' : 'var(--primary)');
-                                let textClass = log.type === 'error' ? 'text-danger' : 'text-white';
-                                logsHTML += `
-                                <div class="mb-3 position-relative">
-                                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: ${color};"></div>
-                                    <strong class="${textClass} d-block">${log.event}</strong>
-                                    <small class="text-secondary">${log.timestamp}</small>
-                                </div>
-                                `;
-                            });
-                            tlContainer.innerHTML = logsHTML;
-                        }
+                        tlContainer.innerHTML = logsHTML;
                     }
                 }
-            });
-        }, 3000);
-        
-        {% elif minutes.status == 'PENDING' %}
-            // If meeting ended but status is still pending, kick off generation!
-            if (!sessionStorage.getItem('summary_requested_{{ selected_meeting.id }}')) {
-                sessionStorage.setItem('summary_requested_{{ selected_meeting.id }}', 'true');
-                showToast("Meeting ended. Automatically generating AI Summary...", "warning");
-                fetch('/mom/generate_summary/{{ selected_meeting.id }}/')
-                .then(() => {
-                    window.location.reload();
-                });
-            } else {
-                console.log("Summary generation already attempted in this session.");
             }
-        {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
-            // If background task is running, poll to refresh when it becomes READY
-            let checkInterval = setInterval(() => {
-                fetch('/mom/latest/{{ selected_meeting.id }}/')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (data.minutes_status === 'READY') {
-                            window.location.reload();
-                        }
-                    }
-                });
-            }, 3000);
-        {% endif %}
+        });
+    }, 2000);
     {% endif %}
 </script>
-<style>
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-</style>
 {% endblock %}

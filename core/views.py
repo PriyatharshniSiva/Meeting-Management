@@ -1680,3 +1680,150 @@ def simulate_zoom_webhook(request, meeting_id):
         messages.error(request, f"Failed to simulate webhook: {e}")
         
     return redirect('mom_detail', meeting_id=meeting.id)
+
+@login_required
+def upload_audio_for_transcription(request, meeting_id):
+    from core.models import Meeting, MeetingMinutes
+    from django.http import JsonResponse
+    from core.ai_processor import start_ai_processing
+    import json
+    
+    if request.method == 'POST':
+        try:
+            meeting = Meeting.objects.get(id=meeting_id)
+            audio_file = request.FILES.get('audio_file')
+            
+            if not audio_file:
+                return JsonResponse({'status': 'error', 'message': 'No audio file provided'})
+                
+            minutes, _ = MeetingMinutes.objects.get_or_create(meeting=meeting)
+            minutes.audio_file = audio_file
+            minutes.status = 'PENDING'
+            minutes.history = ''
+            minutes.speaker_metrics = {}
+            minutes.ai_summary = ''
+            minutes.decisions = []
+            minutes.action_items_raw = []
+            minutes.processing_logs = [{'timestamp': timezone.now().isoformat(), 'message': 'Audio uploaded successfully. Enqueued for processing.'}]
+            minutes.save()
+            
+            # Start background processing
+            start_ai_processing(minutes.id)
+            
+            return JsonResponse({'status': 'success', 'message': 'Upload successful. Processing started.'})
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def check_transcription_status(request, meeting_id):
+    from core.models import MeetingMinutes
+    from django.http import JsonResponse
+    try:
+        minutes = MeetingMinutes.objects.get(meeting_id=meeting_id)
+        return JsonResponse({
+            'status': 'success',
+            'state': minutes.status,
+            'logs': minutes.processing_logs
+        })
+    except MeetingMinutes.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Not found'})
+
+@login_required
+def export_transcript(request, meeting_id, format):
+    from core.models import MeetingMinutes
+    from django.http import HttpResponse
+    from django.shortcuts import get_object_or_404
+    import json
+    import io
+    
+    minutes = get_object_or_404(MeetingMinutes, meeting_id=meeting_id)
+    transcript_data = json.loads(minutes.history) if minutes.history else []
+    
+    if format == 'txt':
+        content = f"Transcript for {minutes.meeting.title}\n"
+        content += f"Date: {minutes.meeting.date} | Time: {minutes.meeting.time}\n"
+        content += "="*50 + "\n\n"
+        
+        for segment in transcript_data:
+            content += f"{segment.get('timestamp', '')}\n{segment.get('speaker', 'Unknown')}:\n{segment.get('text', '')}\n\n"
+            
+        response = HttpResponse(content, content_type='text/plain')
+        response['Content-Disposition'] = f'attachment; filename="Transcript_{minutes.meeting.id}.txt"'
+        return response
+        
+    elif format == 'docx':
+        from docx import Document
+        document = Document()
+        document.add_heading(f"Transcript for {minutes.meeting.title}", 0)
+        document.add_paragraph(f"Date: {minutes.meeting.date} | Time: {minutes.meeting.time}")
+        
+        for segment in transcript_data:
+            p = document.add_paragraph()
+            p.add_run(f"{segment.get('timestamp', '')}\n").bold = True
+            p.add_run(f"{segment.get('speaker', 'Unknown')}:\n").bold = True
+            p.add_run(segment.get('text', ''))
+            
+        buffer = io.BytesIO()
+        document.save(buffer)
+        buffer.seek(0)
+        
+        response = HttpResponse(buffer.getvalue(), content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename="Transcript_{minutes.meeting.id}.docx"'
+        return response
+        
+    elif format == 'pdf':
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import inch
+        
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+        
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(1*inch, height - 1*inch, f"Transcript for {minutes.meeting.title}")
+        
+        c.setFont("Helvetica", 12)
+        c.drawString(1*inch, height - 1.3*inch, f"Date: {minutes.meeting.date} | Time: {minutes.meeting.time}")
+        
+        textobject = c.beginText(1*inch, height - 1.8*inch)
+        textobject.setFont("Helvetica", 10)
+        textobject.setLeading(14)
+        
+        for segment in transcript_data:
+            if textobject.getY() < 1*inch:
+                c.drawText(textobject)
+                c.showPage()
+                textobject = c.beginText(1*inch, height - 1*inch)
+                textobject.setFont("Helvetica", 10)
+                textobject.setLeading(14)
+                
+            textobject.setFont("Helvetica-Bold", 10)
+            textobject.textLine(f"{segment.get('timestamp', '')} - {segment.get('speaker', 'Unknown')}:")
+            textobject.setFont("Helvetica", 10)
+            
+            # Simple text wrap
+            words = segment.get('text', '').split()
+            line = ""
+            for word in words:
+                if len(line) + len(word) > 80:
+                    textobject.textLine(line)
+                    line = word + " "
+                else:
+                    line += word + " "
+            textobject.textLine(line)
+            textobject.textLine("")
+            
+        c.drawText(textobject)
+        c.showPage()
+        c.save()
+        
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Transcript_{minutes.meeting.id}.pdf"'
+        return response
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid format'})

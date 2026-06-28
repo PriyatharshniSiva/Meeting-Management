@@ -103,9 +103,6 @@
                                             <div class="d-flex align-items-center justify-content-between mb-2 bg-black bg-opacity-25 p-2 rounded border-start border-3 
                                                 {% if log.status == 'ACCEPTED' %}border-success{% elif log.status == 'DECLINED' %}border-danger{% else %}border-secondary{% endif %}">
                                                 <div class="d-flex align-items-center gap-2">
-                                                    <div class="avatar-sm bg-gradient-purple text-white rounded-circle d-flex align-items-center justify-content-center" style="width:24px;height:24px;font-size:10px;">
-                                                        {{ log.user.username.0|upper }}
-                                                    </div>
                                                     <div>
                                                         <span class="text-white small d-block" style="line-height: 1;">{{ log.user.username }}</span>
                                                         <span class="text-secondary" style="font-size: 0.6rem;">{{ log.timestamp|date:"M d, H:i" }}</span>
@@ -230,7 +227,7 @@
     <div class="modal-content glass-card border-0" style="background: var(--card-bg);">
       <div class="modal-header border-secondary border-opacity-25">
         <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createProjectModalLabel"><i data-lucide="briefcase" class="icon-purple"></i> Create New Project</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" style="filter: var(--close-btn-filter);" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" action="{% url 'projects' %}">
           {% csrf_token %}

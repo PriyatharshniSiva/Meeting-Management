@@ -222,7 +222,7 @@
     <div class="modal-content glass-card border-0" style="background: var(--card-bg);">
       <div class="modal-header border-secondary border-opacity-25">
         <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel"><i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" style="filter: var(--close-btn-filter);" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" action="{% url 'meetings' %}">
           {% csrf_token %}

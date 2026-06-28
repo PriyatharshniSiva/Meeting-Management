@@ -73,8 +73,11 @@ class MeetingMinutes(models.Model):
     decisions = models.JSONField(default=list, blank=True)
     action_items_raw = models.JSONField(default=list, blank=True)
     agenda = models.TextField(blank=True, null=True)
+    audio_file = models.FileField(upload_to='mom_audio/', blank=True, null=True)
+    speaker_metrics = models.JSONField(default=dict, blank=True, help_text="Stores speaker diarization stats")
     pdf_export = models.FileField(upload_to='exports/pdf/', blank=True, null=True)
     docx_export = models.FileField(upload_to='exports/docx/', blank=True, null=True)
+    txt_export = models.FileField(upload_to='exports/txt/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class ActionItem(models.Model):
