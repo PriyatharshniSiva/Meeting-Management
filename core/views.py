@@ -706,6 +706,8 @@ def rsvp_email_view(request, meeting_id):
     from core.models import Participant, InAppNotification
     from django.utils import timezone
     from django.http import HttpResponse
+    from django.shortcuts import redirect
+    import datetime
     
     participant_id = request.GET.get('participant_id')
     status = request.GET.get('status')
@@ -715,6 +717,23 @@ def rsvp_email_view(request, meeting_id):
         
     try:
         participant = Participant.objects.get(id=participant_id, meeting_id=meeting_id)
+        
+        # Prevent duplicate responses
+        if participant.rsvp_status != 'PENDING':
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
+                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+                        <h2 style='color: #4b5563; font-size: 24px; margin-top: 0;'>Already Responded</h2>
+                        <p style='color: #4b5563; font-size: 16px;'>You have already responded to this invitation as <strong>{participant.get_rsvp_status_display()}</strong>.</p>
+                        <p style='color: #9ca3af; font-size: 14px;'>No further action is required.</p>
+                    </div>
+                </body>
+            </html>
+            """
+            return HttpResponse(html)
+            
         participant.rsvp_status = status
         participant.rsvp_time = timezone.now()
         participant.save()
@@ -741,15 +760,51 @@ def rsvp_email_view(request, meeting_id):
             }
         )
         
-        html = f"""
-        <html>
-            <body style='font-family:sans-serif; text-align:center; margin-top:50px;'>
-                <h2>RSVP Successful!</h2>
-                <p>You have <strong>{status.lower()}</strong> the invitation for <strong>{participant.meeting.title}</strong>.</p>
-                <p>You may now close this window.</p>
-            </body>
-        </html>
-        """
+        if status == 'ACCEPTED':
+            m = participant.meeting
+            m_dt_naive = datetime.datetime.combine(m.date, m.time)
+            m_dt = timezone.make_aware(m_dt_naive)
+            now = timezone.now()
+            
+            duration_delta = datetime.timedelta(minutes=m.duration if m.duration else 30)
+            end_dt = m_dt + duration_delta
+            
+            # Auto-join if meeting is starting soon (within 15 mins) or currently ongoing
+            if now >= (m_dt - datetime.timedelta(minutes=15)) and now <= end_dt:
+                if m.meeting_link:
+                    participant.join_time = timezone.now()
+                    participant.attendance_status = 'ATTENDED'
+                    participant.save()
+                    return redirect(m.meeting_link)
+            
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
+                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 6px solid #10b981;'>
+                        <div style='font-size: 54px; margin-bottom: 20px;'>✅</div>
+                        <h2 style='color: #111827; margin-top: 0; font-size: 28px;'>Status: Accepted</h2>
+                        <p style='color: #4b5563; font-size: 16px; line-height: 1.5;'>You have successfully <strong>accepted</strong> the invitation for <br><strong>{participant.meeting.title}</strong>.</p>
+                        <p style='color: #9ca3af; font-size: 14px; margin-top: 30px;'>You may now close this window.</p>
+                    </div>
+                </body>
+            </html>
+            """
+        else:
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
+                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 6px solid #ef4444;'>
+                        <div style='font-size: 54px; margin-bottom: 20px;'>❌</div>
+                        <h2 style='color: #111827; margin-top: 0; font-size: 28px;'>Status: Declined</h2>
+                        <p style='color: #4b5563; font-size: 16px; line-height: 1.5;'>You have <strong>declined</strong> the invitation for <br><strong>{participant.meeting.title}</strong>.</p>
+                        <p style='color: #9ca3af; font-size: 14px; margin-top: 30px;'>You may now close this window.</p>
+                    </div>
+                </body>
+            </html>
+            """
+            
         return HttpResponse(html)
         
     except Participant.DoesNotExist:
@@ -2012,3 +2067,43 @@ def export_transcript(request, meeting_id, format):
         return response
         
     return JsonResponse({'status': 'error', 'message': 'Invalid format'})
+
+@login_required
+def retry_transcription_view(request, meeting_id):
+    from core.models import MeetingMinutes
+    from django.shortcuts import get_object_or_404, redirect
+    from core.ai_processor import start_ai_processing
+    import django.utils.timezone as timezone
+    
+    if request.method == 'POST':
+        minutes = get_object_or_404(MeetingMinutes, meeting__id=meeting_id)
+        minutes.status = 'PENDING'
+        minutes.processing_logs = [{'timestamp': timezone.now().isoformat(), 'message': 'Retrying AI processing...'}]
+        minutes.save()
+        
+        start_ai_processing(minutes.id)
+        
+    return redirect('mom_detail', meeting_id=meeting_id)
+
+@login_required
+def delete_transcription_view(request, meeting_id):
+    from core.models import MeetingMinutes
+    from django.shortcuts import get_object_or_404, redirect
+    
+    if request.method == 'POST':
+        minutes = get_object_or_404(MeetingMinutes, meeting__id=meeting_id)
+        # Clear data
+        minutes.history = ""
+        minutes.ai_summary = ""
+        minutes.decisions = []
+        minutes.action_items_raw = []
+        minutes.processing_logs = []
+        minutes.status = 'PENDING'
+        if minutes.audio_file:
+            minutes.audio_file.delete()
+        minutes.save()
+        
+        # Delete related action items generated from MoM
+        minutes.meeting.action_items.filter(description__icontains="Auto-generated action item").delete()
+        
+    return redirect('mom')

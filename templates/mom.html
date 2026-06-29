@@ -41,17 +41,29 @@
                     </thead>
                     <tbody>
                         {% for m in meetings %}
-                            {% if m.minutes.status == 'READY' %}
+                            {% if m.minutes.status == 'READY' or m.minutes.status == 'FAILED' %}
                             <tr>
                                 <td class="text-white align-middle" style="background: transparent;">
                                     <a href="/mom/{{ m.id }}/" class="text-white text-decoration-none fw-bold hover-primary">{{ m.title }}</a>
                                 </td>
                                 <td class="text-secondary align-middle" style="background: transparent;">{{ m.date|date:"M d, Y" }}</td>
-                                <td class="align-middle" style="background: transparent;"><span class="badge bg-success bg-opacity-25 text-success border border-success">Ready</span></td>
+                                <td class="align-middle" style="background: transparent;">
+                                    {% if m.minutes.status == 'READY' %}
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success">Ready</span>
+                                    {% elif m.minutes.status == 'FAILED' %}
+                                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger">Failed</span>
+                                    {% endif %}
+                                </td>
                                 <td class="text-end align-middle" style="background: transparent;">
                                     <div class="d-flex justify-content-end gap-2">
+                                        {% if m.minutes.status == 'READY' %}
                                         <a href="{% url 'export_transcript' m.id 'pdf' %}" class="btn btn-sm btn-outline-danger" title="Download PDF"><i data-lucide="file-digit" style="width:14px;"></i> PDF</a>
                                         <a href="{% url 'export_transcript' m.id 'docx' %}" class="btn btn-sm btn-outline-primary" title="Download Word"><i data-lucide="file" style="width:14px;"></i> Word</a>
+                                        {% endif %}
+                                        <form action="{% url 'delete_transcription' m.id %}" method="POST" class="d-inline mb-0" onsubmit="return confirm('Are you sure you want to delete this transcript?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Delete"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

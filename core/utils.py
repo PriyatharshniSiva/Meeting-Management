@@ -47,26 +47,75 @@ def send_meeting_invites(meeting, participants):
         decline_link = f"http://127.0.0.1:8000/meetings/rsvp_email/{meeting.id}/?participant_id={participant.id}&status=DECLINED"
         
         html_content = f"""
-        <html>
-            <body style="font-family: sans-serif; color: #333;">
-                <h2>Meeting Invitation: {meeting.title}</h2>
-                <p>Hello <strong>{recipient_name}</strong>,</p>
-                <p>You have been invited to a meeting organized by <strong>{meeting.created_by.username}</strong>.</p>
-                <div style="background: #f4f4f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <ul style="list-style-type: none; padding: 0;">
-                        <li><strong>Title:</strong> {meeting.title}</li>
-                        <li><strong>Date:</strong> {meeting.date}</li>
-                        <li><strong>Time:</strong> {meeting.time}</li>
-                        <li><strong>Duration:</strong> {meeting.duration} mins</li>
-                        <li><strong>Agenda:</strong> {meeting.description}</li>
-                        <li><strong>Location/Link:</strong> <a href="{meeting.meeting_link or '#'}">{meeting.meeting_link or meeting.location or 'N/A'}</a></li>
-                    </ul>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; padding: 20px; margin: 0; color: #1f2937; line-height: 1.6;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                
+                <!-- Header -->
+                <div style="background-color: #4f46e5; color: #ffffff; padding: 30px 20px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Meeting Invitation</h1>
                 </div>
                 
-                <p>Please respond to this invitation:</p>
-                <a href="{accept_link}" style="padding: 10px 20px; background-color: #10b981; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px; display: inline-block;">✅ Accept Meeting</a>
-                <a href="{decline_link}" style="padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">❌ Decline Meeting</a>
-            </body>
+                <!-- Body -->
+                <div style="padding: 30px;">
+                    <p style="font-size: 18px; margin-top: 0;">Hello <strong>{recipient_name}</strong>,</p>
+                    <p style="font-size: 16px; color: #4b5563;">You have been invited to a meeting organized by <strong>{meeting.created_by.username}</strong>.</p>
+                    
+                    <!-- Details Card -->
+                    <div style="margin-top: 30px; margin-bottom: 30px;">
+                        <h2 style="font-size: 20px; font-weight: 600; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Meeting Details</h2>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; width: 120px; font-weight: 600; color: #6b7280; font-size: 16px;">Title:</td>
+                                <td style="padding: 8px 0; font-weight: 500; font-size: 16px;">{meeting.title}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #6b7280; font-size: 16px;">Date:</td>
+                                <td style="padding: 8px 0; font-weight: 500; font-size: 16px;">{meeting.date}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #6b7280; font-size: 16px;">Time:</td>
+                                <td style="padding: 8px 0; font-weight: 500; font-size: 16px;">{meeting.time}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #6b7280; font-size: 16px;">Duration:</td>
+                                <td style="padding: 8px 0; font-weight: 500; font-size: 16px;">{meeting.duration} mins</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #6b7280; font-size: 16px;">Agenda:</td>
+                                <td style="padding: 8px 0; font-weight: 500; font-size: 16px;">{meeting.description or 'No agenda provided'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-weight: 600; color: #6b7280; font-size: 16px;">Link/Location:</td>
+                                <td style="padding: 8px 0; font-size: 16px;"><a href="{meeting.meeting_link or '#'}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">{meeting.meeting_link or meeting.location or 'N/A'}</a></td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Action Section -->
+                    <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 25px; text-align: center;">
+                        <h2 style="font-size: 20px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 20px;">Action Required</h2>
+                        <p style="font-size: 15px; color: #4b5563; margin-bottom: 25px;">Please confirm your attendance by clicking one of the buttons below:</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                            <a href="{accept_link}" style="display: inline-block; padding: 14px 28px; background-color: #10b981; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">✅ Accept Invitation</a>
+                            <a href="{decline_link}" style="display: inline-block; padding: 14px 28px; background-color: #ef4444; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);">❌ Decline Invitation</a>
+                        </div>
+                    </div>
+                    
+                </div>
+                <!-- Footer -->
+                <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="font-size: 13px; color: #9ca3af; margin: 0;">Powered by MeetingMind</p>
+                </div>
+            </div>
+        </body>
         </html>
         """
         

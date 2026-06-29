@@ -31,6 +31,9 @@ urlpatterns = [
     path('mom/<int:meeting_id>/export/<str:format>/', views.export_transcript, name='export_transcript'),
     path('mom/autosave/<int:meeting_id>/', views.autosave_transcript, name='autosave_transcript'),
     path('mom/latest/<int:meeting_id>/', views.latest_transcript, name='latest_transcript'),
+    
+    path('transcription/<int:meeting_id>/retry/', views.retry_transcription_view, name='retry_transcription'),
+    path('transcription/<int:meeting_id>/delete/', views.delete_transcription_view, name='delete_transcription'),
     path('zoom/webhook/', views.zoom_webhook, name='zoom_webhook'),
     path('zoom/simulate/<int:meeting_id>/', views.simulate_zoom_webhook, name='simulate_zoom_webhook'),
     

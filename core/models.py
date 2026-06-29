@@ -102,6 +102,7 @@ class MeetingMinutes(models.Model):
         ('GENERATING', 'Generating AI Summary'),
         ('READY', 'Minutes Ready'),
         ('NO_TRANSCRIPT', 'No Transcript Available'),
+        ('FAILED', 'Transcription Failed'),
     )
     meeting = models.OneToOneField(Meeting, on_delete=models.CASCADE, related_name='minutes')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
