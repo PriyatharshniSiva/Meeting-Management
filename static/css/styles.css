@@ -408,6 +408,7 @@ a:hover {
     pointer-events: none;
     text-decoration: none;
 }
+}
 .fab-container:hover .fab-item {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -435,6 +436,141 @@ a:hover {
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
     color: var(--text-primary) !important;
+}
+
+/* Enterprise Form & Modal Styling Updates */
+.create-meeting-modal .modal-dialog {
+    max-width: 720px;
+    margin: 1.75rem auto;
+}
+
+.modal-content.enterprise-card {
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow-lg) !important;
+    overflow: hidden;
+}
+
+.modal-header.enterprise-header {
+    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 18px 24px;
+}
+
+.modal-body.enterprise-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px !important; /* Strict 16px vertical spacing between all form groups */
+}
+
+.form-group-compact {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0 !important;
+}
+
+.form-group-compact .form-label {
+    margin-bottom: 8px !important; /* Strict 8px label-to-input vertical spacing */
+    font-weight: 600;
+    font-size: 0.825rem;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-group-compact .form-control,
+.form-group-compact .form-select,
+.form-group-compact .glass-input,
+.form-group-compact .btn-dropdown-custom {
+    padding: 10px 14px !important;
+    font-size: 0.925rem !important;
+    font-weight: 400 !important;
+    border-radius: 8px !important;
+    height: 42px !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+    background-color: var(--bg-dark) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+}
+
+.form-group-compact .btn-dropdown-custom {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    text-align: left !important;
+}
+
+.form-group-compact .btn-dropdown-custom:focus,
+.form-group-compact .btn-dropdown-custom:active,
+.form-group-compact .btn-dropdown-custom.show,
+.form-group-compact .btn-dropdown-custom[aria-expanded="true"] {
+    background-color: var(--bg-dark) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+    color: var(--text-primary) !important;
+    outline: none !important;
+}
+
+/* Unified Placeholder Styling Across All Form Inputs & Custom Dropdowns */
+.form-control::placeholder,
+.form-select::placeholder,
+.glass-input::placeholder,
+textarea::placeholder,
+input::placeholder,
+.form-placeholder-text {
+    color: var(--text-secondary) !important;
+    opacity: 0.85 !important;
+    font-size: 0.925rem !important;
+    font-weight: 400 !important;
+}
+
+.form-value-text {
+    color: var(--text-primary) !important;
+    opacity: 1 !important;
+    font-size: 0.925rem !important;
+    font-weight: 400 !important;
+}
+
+.form-group-compact textarea.form-control {
+    height: auto !important;
+    min-height: 84px;
+    resize: vertical;
+}
+
+/* File input customization */
+.form-group-compact input[type="file"].form-control {
+    padding: 6px 12px !important;
+    height: 42px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+.form-group-compact input[type="file"].form-control::file-selector-button {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 4px 12px;
+    margin-right: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.form-group-compact input[type="file"].form-control::file-selector-button:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.form-help-text {
+    margin-top: 6px !important;
+    margin-bottom: 0 !important;
+    font-size: 0.775rem !important;
+    color: var(--text-secondary) !important;
 }
 
 .form-check-input {

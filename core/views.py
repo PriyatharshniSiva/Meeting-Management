@@ -211,12 +211,39 @@ def meetings_view(request):
                 notification_type='INVITE', related_meeting=meeting
             ))
             
-        # External Emails
-        if external_emails_str:
+        # External Emails & Roles
+        external_emails_list = request.POST.getlist('external_emails')
+        external_roles_list = request.POST.getlist('external_roles')
+        
+        if external_roles_list:
+            for role in external_roles_list:
+                role_clean = role.strip()
+                if role_clean:
+                    participants_to_create.append(Participant(
+                        meeting=meeting, 
+                        external_email='', 
+                        external_name=f"{role_clean} (External Guest)",
+                        rsvp_status='PENDING', 
+                        attendance_status='PENDING'
+                    ))
+        elif external_emails_list:
+            for i, email in enumerate(external_emails_list):
+                email_clean = email.strip()
+                if email_clean:
+                    role = external_roles_list[i].strip() if i < len(external_roles_list) else 'Guest'
+                    name_prefix = email_clean.split('@')[0].replace('.', ' ').title()
+                    display_name = f"{name_prefix} ({role})"
+                    participants_to_create.append(Participant(
+                        meeting=meeting, 
+                        external_email=email_clean, 
+                        external_name=display_name,
+                        rsvp_status='PENDING', 
+                        attendance_status='PENDING'
+                    ))
+        elif external_emails_str:
             import re
             emails = [email.strip() for email in re.split(r'[,\n]+', external_emails_str) if email.strip()]
             for email in emails:
-                # Name fallback from email prefix
                 name_prefix = email.split('@')[0].replace('.', ' ').title()
                 participants_to_create.append(Participant(
                     meeting=meeting, 

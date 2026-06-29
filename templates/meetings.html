@@ -5,6 +5,52 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+<style>
+/* External Guests Dropdown Enterprise UI Updates */
+.external-roles-dropdown-menu {
+    background-color: #FFFFFF !important;
+    border: 1px solid #D1D5DB !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.external-role-item {
+    border-radius: 6px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    padding: 6px 10px;
+    margin-bottom: 2px;
+}
+
+.external-role-item:hover {
+    background-color: #F3F4F6 !important;
+}
+
+.external-role-item.selected {
+    background-color: #ECFDF5 !important;
+}
+
+.external-role-item .form-check-label {
+    color: #1F2937 !important;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.external-role-item.selected .form-check-label {
+    color: #065F46 !important;
+    font-weight: 600;
+}
+
+.external-roles-dropdown-menu .form-check-input {
+    border-color: #9CA3AF !important;
+    cursor: pointer;
+}
+
+.external-roles-dropdown-menu .form-check-input:checked {
+    background-color: #10B981 !important;
+    border-color: #10B981 !important;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -217,105 +263,136 @@
 </style>
 
 <!-- Create Meeting Modal -->
-<div class="modal fade" id="createMeetingModal" tabindex="-1" aria-labelledby="createMeetingModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-fullscreen">
-    <div class="modal-content glass-card border-0" style="background: var(--card-bg);">
-      <div class="modal-header border-secondary border-opacity-25">
-        <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel"><i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting</h5>
+<div class="modal fade create-meeting-modal" id="createMeetingModal" tabindex="-1" aria-labelledby="createMeetingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content enterprise-card">
+      <div class="modal-header enterprise-header">
+        <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel">
+            <i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting
+        </h5>
         <button type="button" class="btn-close" style="filter: var(--close-btn-filter);" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="POST" action="{% url 'meetings' %}" enctype="multipart/form-data">
           {% csrf_token %}
-          <div class="modal-body text-white">
-              <div class="mb-3">
-                  <label class="form-label text-secondary small mb-1">Meeting Title</label>
-                  <input type="text" name="title" class="form-control glass-input text-white" placeholder="e.g. Sprint Planning" required>
+          <div class="modal-body enterprise-body">
+              <!-- Meeting Title -->
+              <div class="form-group-compact">
+                  <label class="form-label">Meeting Title</label>
+                  <input type="text" name="title" class="form-control glass-input" placeholder="e.g. Sprint Planning" required>
               </div>
-              <div class="row g-3 mb-3">
-                  <div class="col-6">
-                      <label class="form-label text-secondary small mb-1">Date</label>
-                      <input type="text" name="date" class="form-control glass-input text-white date-picker" placeholder="Select Date" required>
+
+              <!-- Date & Time Row -->
+              <div class="row g-3">
+                  <div class="col-md-6 form-group-compact">
+                      <label class="form-label">Date</label>
+                      <input type="text" name="date" class="form-control glass-input date-picker" placeholder="Select Date" required>
                   </div>
-                  <div class="col-6">
-                      <label class="form-label text-secondary small mb-1">Time</label>
-                      <input type="text" name="time" class="form-control glass-input text-white time-picker" placeholder="Select Time" required>
+                  <div class="col-md-6 form-group-compact">
+                      <label class="form-label">Time</label>
+                      <input type="text" name="time" class="form-control glass-input time-picker" placeholder="Select Time" required>
                   </div>
               </div>
-              <div class="row g-3 mb-3">
-                  <div class="col-6">
-                      <label class="form-label text-secondary small mb-1">Duration (mins)</label>
-                      <input type="number" name="duration" class="form-control glass-input text-white" placeholder="e.g. 60" required>
+
+              <!-- Duration & Type Row -->
+              <div class="row g-3">
+                  <div class="col-md-6 form-group-compact">
+                      <label class="form-label">Duration (mins)</label>
+                      <input type="number" name="duration" class="form-control glass-input" placeholder="e.g. 60" required>
                   </div>
-                  <div class="col-6">
-                      <label class="form-label text-secondary small mb-1">Meeting Type</label>
-                      <select name="meeting_type" id="meetingTypeSelect" class="form-select glass-input text-white">
+                  <div class="col-md-6 form-group-compact">
+                      <label class="form-label">Meeting Type</label>
+                      <select name="meeting_type" id="meetingTypeSelect" class="form-select glass-input">
                           <option class="bg-dark" value="ONLINE">Online</option>
                           <option class="bg-dark" value="OFFLINE">Offline</option>
                       </select>
                   </div>
               </div>
-              <div class="mb-3 d-none" id="locationFieldContainer">
-                  <label class="form-label text-secondary small mb-1">Location</label>
-                  <input type="text" name="location" class="form-control glass-input text-white" placeholder="e.g. Conference Room A">
+
+              <!-- Conditional Location / Link -->
+              <div class="form-group-compact d-none" id="locationFieldContainer">
+                  <label class="form-label">Location</label>
+                  <input type="text" name="location" class="form-control glass-input" placeholder="e.g. Conference Room A">
               </div>
-              <div class="mb-3" id="linkFieldContainer">
-                  <label class="form-label text-secondary small mb-1">Zoom Meeting Link</label>
-                  <input type="url" name="meeting_link" id="meetingLinkInput" class="form-control glass-input text-white" placeholder="Paste meeting link here (e.g. https://zoom.us/j/...)">
+              <div class="form-group-compact" id="linkFieldContainer">
+                  <label class="form-label">Zoom Meeting Link</label>
+                  <input type="url" name="meeting_link" id="meetingLinkInput" class="form-control glass-input" placeholder="Paste meeting link here (e.g. https://zoom.us/j/...)">
               </div>
-              <div class="mb-3">
-                  <label class="form-label text-secondary small mb-2">Employees to Invite</label>
+
+              <!-- Employees to Invite -->
+              <div class="form-group-compact">
+                  <label class="form-label">Employees to Invite</label>
                   <div class="dropdown">
-                      <button id="usersDropdownBtn" class="btn form-control glass-input text-white text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="background-color: rgba(0,0,0,0.2);">
-                          <span id="usersDropdownText">Select employees...</span>
-                          <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
+                      <button id="usersDropdownBtn" class="btn btn-dropdown-custom form-control glass-input" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                          <span id="usersDropdownText" class="form-placeholder-text">Select employees...</span>
+                          <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
                       </button>
-                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); max-height: 250px; overflow-y: auto;">
+                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border-color); max-height: 200px; overflow-y: auto;">
                           {% for u in users %}
                           <li>
                               <div class="form-check custom-checkbox mb-2">
                                   <input class="form-check-input user-checkbox" type="checkbox" name="users" value="{{ u.id }}" id="userDrop{{ u.id }}">
-                                  <label class="form-check-label" style="color: #ffffff !important;" for="userDrop{{ u.id }}">{{ u.username }} ({{ u.email }})</label>
+                                  <label class="form-check-label text-white ms-1" for="userDrop{{ u.id }}">{{ u.username }} ({{ u.email }})</label>
                               </div>
                           </li>
                           {% endfor %}
                       </ul>
                   </div>
-                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the boxes to select participants.</small>
-                  
-                  <script>
-                  document.addEventListener('DOMContentLoaded', function() {
-                      const userCheckboxes = document.querySelectorAll('.user-checkbox');
-                      const dropdownText = document.getElementById('usersDropdownText');
-                      
-                      userCheckboxes.forEach(cb => {
-                          cb.addEventListener('change', () => {
-                              const selectedCount = Array.from(userCheckboxes).filter(i => i.checked).length;
-                              if (selectedCount > 0) {
-                                  dropdownText.textContent = `${selectedCount} employee(s) selected`;
-                              } else {
-                                  dropdownText.textContent = 'Select employees...';
-                              }
-                          });
-                      });
-                  });
-                  </script>
+                  <small class="form-help-text">Check the boxes to select participants.</small>
               </div>
-              <div class="mb-3">
-                  <label class="form-label text-secondary small mb-1">External Guests (Emails)</label>
-                  <textarea name="external_emails" class="form-control glass-input text-white" rows="2" placeholder="e.g. guest1@example.com, guest2@test.com"></textarea>
-                  <small class="text-secondary d-block mt-1" style="font-size: 0.75rem;">Separate multiple emails with commas.</small>
+
+              <!-- External Guests -->
+              <div class="form-group-compact">
+                  <label class="form-label">External Guests</label>
+                  <div class="dropdown" id="externalRolesDropdownContainer">
+                      <button id="rolesDropdownBtn" class="btn btn-dropdown-custom form-control glass-input d-flex align-items-center justify-content-between flex-wrap gap-1 text-start w-100" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="min-height: 42px; height: auto !important; padding: 6px 14px !important;">
+                          <div id="rolesSelectedContainer" class="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
+                              <span id="rolesDropdownText" class="form-placeholder-text">Select external guest roles...</span>
+                          </div>
+                          <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: var(--text-secondary); flex-shrink: 0; margin-left: auto;"></i>
+                      </button>
+                      <ul class="dropdown-menu external-roles-dropdown-menu p-2 w-100" style="max-height: 200px; overflow-y: auto;">
+                          <li class="external-role-item">
+                              <div class="form-check custom-checkbox d-flex align-items-center mb-0">
+                                  <input class="form-check-input role-checkbox me-2" type="checkbox" name="external_roles" value="Team Leader" id="roleTeamLeader">
+                                  <label class="form-check-label flex-grow-1" for="roleTeamLeader">Team Leader</label>
+                              </div>
+                          </li>
+                          <li class="external-role-item">
+                              <div class="form-check custom-checkbox d-flex align-items-center mb-0">
+                                  <input class="form-check-input role-checkbox me-2" type="checkbox" name="external_roles" value="Owner/Admin" id="roleOwnerAdmin">
+                                  <label class="form-check-label flex-grow-1" for="roleOwnerAdmin">Owner/Admin</label>
+                              </div>
+                          </li>
+                          <li class="external-role-item">
+                              <div class="form-check custom-checkbox d-flex align-items-center mb-0">
+                                  <input class="form-check-input role-checkbox me-2" type="checkbox" name="external_roles" value="Employee" id="roleEmployee">
+                                  <label class="form-check-label flex-grow-1" for="roleEmployee">Employee</label>
+                              </div>
+                          </li>
+                          <li class="external-role-item">
+                              <div class="form-check custom-checkbox d-flex align-items-center mb-0">
+                                  <input class="form-check-input role-checkbox me-2" type="checkbox" name="external_roles" value="Intern" id="roleIntern">
+                                  <label class="form-check-label flex-grow-1" for="roleIntern">Intern</label>
+                              </div>
+                          </li>
+                      </ul>
+                  </div>
               </div>
-              <div class="mb-3">
-                  <label class="form-label text-secondary small mb-1">Description / Agenda</label>
-                  <textarea name="description" class="form-control glass-input text-white" rows="3" placeholder="Brief agenda..."></textarea>
+
+              <!-- Description / Agenda -->
+              <div class="form-group-compact">
+                  <label class="form-label">Description / Agenda</label>
+                  <textarea name="description" class="form-control glass-input" rows="3" placeholder="Brief agenda..."></textarea>
               </div>
-              <div class="mb-3">
-                  <label class="form-label text-secondary small mb-1">Attachment (Optional)</label>
-                  <input type="file" name="attachment" class="form-control glass-input text-white">
-                  <small class="text-secondary d-block mt-1" style="font-size: 0.75rem;">Upload a document (PDF, DOCX, etc.)</small>
+
+              <!-- Attachment (Optional) -->
+              <div class="form-group-compact">
+                  <label class="form-label">Attachment (Optional)</label>
+                  <input type="file" name="attachment" class="form-control glass-input">
+                  <small class="form-help-text">Upload a document (PDF, DOCX, etc.)</small>
               </div>
           </div>
-          <div class="modal-footer border-secondary border-opacity-25">
+          <div class="modal-footer border-secondary border-opacity-25 px-4 py-3">
             <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary rounded-pill px-4">Create Meeting</button>
           </div>
@@ -566,6 +643,91 @@
                     generateMeetingLink();
                 }
             });
+        }
+
+        const userCheckboxes = document.querySelectorAll('.user-checkbox');
+        const dropdownText = document.getElementById('usersDropdownText');
+        if (userCheckboxes && dropdownText) {
+            userCheckboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const selectedCount = Array.from(userCheckboxes).filter(i => i.checked).length;
+                    if (selectedCount > 0) {
+                        dropdownText.textContent = `${selectedCount} employee(s) selected`;
+                        dropdownText.className = 'form-value-text';
+                    } else {
+                        dropdownText.textContent = 'Select employees...';
+                        dropdownText.className = 'form-placeholder-text';
+                    }
+                });
+            });
+        }
+
+        // External Guest Roles Multi-Select Chips Logic
+        const roleCheckboxes = document.querySelectorAll('.role-checkbox');
+        const rolesSelectedContainer = document.getElementById('rolesSelectedContainer');
+
+        function updateRoleChips() {
+            if (!rolesSelectedContainer) return;
+            rolesSelectedContainer.innerHTML = '';
+            const selected = Array.from(roleCheckboxes).filter(cb => cb.checked);
+
+            roleCheckboxes.forEach(cb => {
+                const item = cb.closest('.external-role-item');
+                if (item) {
+                    if (cb.checked) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                }
+            });
+
+            if (selected.length === 0) {
+                const placeholder = document.createElement('span');
+                placeholder.className = 'form-placeholder-text';
+                placeholder.textContent = 'Select external guest roles...';
+                rolesSelectedContainer.appendChild(placeholder);
+            } else {
+                selected.forEach(cb => {
+                    const chip = document.createElement('span');
+                    chip.className = 'badge d-inline-flex align-items-center gap-1 text-white fw-medium px-2 py-1 me-1 mb-1';
+                    chip.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    chip.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+                    chip.style.color = '#10B981';
+                    chip.style.borderRadius = '6px';
+                    chip.style.fontSize = '0.8rem';
+                    
+                    chip.innerHTML = `
+                        <span>${cb.value}</span>
+                        <i data-lucide="x" class="remove-role-chip" style="width: 12px; height: 12px; cursor: pointer; opacity: 0.8;" data-value="${cb.value}"></i>
+                    `;
+                    rolesSelectedContainer.appendChild(chip);
+                });
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }
+        }
+
+        if (roleCheckboxes && roleCheckboxes.length > 0) {
+            roleCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateRoleChips);
+            });
+            if (rolesSelectedContainer) {
+                rolesSelectedContainer.addEventListener('click', function(e) {
+                    const removeBtn = e.target.closest('.remove-role-chip');
+                    if (removeBtn) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const val = removeBtn.getAttribute('data-value');
+                        const targetCb = Array.from(roleCheckboxes).find(cb => cb.value === val);
+                        if (targetCb) {
+                            targetCb.checked = false;
+                            updateRoleChips();
+                        }
+                    }
+                });
+            }
         }
         
         // WebSocket Connection for Real-Time Notifications
