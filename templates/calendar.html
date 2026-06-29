@@ -126,7 +126,7 @@
                             </div>
                             <small class="text-secondary d-flex align-items-center gap-1 mb-2"><i data-lucide="calendar" style="width:12px;"></i> {{ m.date }} | <i data-lucide="clock" style="width:12px;"></i> {{ m.time }}</small>
                             {% if m.meeting_type == 'ONLINE' %}
-                            <a href="{% url 'mom_view' m.id %}" class="btn btn-sm btn-outline-primary py-0 px-2 small">Details / Join</a>
+                            <a href="{% url 'mom_detail' m.id %}" class="btn btn-sm btn-outline-primary py-0 px-2 small">Details / Join</a>
                             {% endif %}
                         </div>
                     </div>

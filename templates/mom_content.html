@@ -17,6 +17,20 @@
             </div>
             
             {% if not minutes or minutes.status == 'PENDING' or minutes.status == 'NO_TRANSCRIPT' %}
+                {% if minutes.status == 'NO_TRANSCRIPT' %}
+                <div class="alert alert-danger mb-4">
+                    <strong>Transcription Failed:</strong>
+                    {% for log in minutes.processing_logs reversed %}
+                        {% if forloop.first %}
+                            {{ log.message }}
+                        {% endif %}
+                    {% empty %}
+                        Unknown error occurred.
+                    {% endfor %}
+                    <br><small>Please check your Gemini API key in the .env file.</small>
+                </div>
+                {% endif %}
+                
                 <!-- Input Options -->
                 <div class="row g-4 mb-4">
                     <!-- Upload Interface -->

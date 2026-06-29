@@ -242,17 +242,29 @@
             .then(response => response.json())
             .then(data => {
                 if(data.status === 'success') {
-                    if(data.state === 'READY' || data.state === 'PENDING') {
+                    if(data.state === 'READY' || data.state === 'PENDING' || data.state === 'NO_TRANSCRIPT') {
                         // Finished or errored
                         clearInterval(pollInterval);
                         fetchMomContent();
                     } else {
                         // Update progress UI dynamically if needed
                         let stateElem = document.getElementById('processingStateText');
+                        let bar = document.getElementById('progressBar');
+                        
                         if(stateElem && data.state === 'GENERATING') {
                             stateElem.textContent = 'Generating AI Summary...';
-                            let bar = document.getElementById('progressBar');
                             if(bar) bar.style.width = '80%';
+                        } else if(stateElem && data.state === 'PROCESSING') {
+                            if(data.logs && data.logs.length > 0) {
+                                let lastLog = data.logs[data.logs.length - 1].message;
+                                if(lastLog.includes('Transcribing Part')) {
+                                    stateElem.textContent = lastLog;
+                                    if(bar) bar.style.width = '60%';
+                                } else if(lastLog.includes('Merging')) {
+                                    stateElem.textContent = 'Merging Transcript...';
+                                    if(bar) bar.style.width = '75%';
+                                }
+                            }
                         }
                         
                         // Update timeline

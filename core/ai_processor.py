@@ -27,6 +27,10 @@ def run_ai_transcription(minutes_id):
         api_key = os.getenv("GEMINI_API_KEY", "")
         if not api_key or api_key == "your_gemini_api_key_here":
             raise Exception("GEMINI_API_KEY is not configured in .env")
+            
+        # Log masked key
+        masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "***"
+        print(f"DEBUG: Loaded GEMINI_API_KEY for audio transcription: {masked_key}")
         genai.configure(api_key=api_key)
         
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Uploading audio to AI model for transcription and diarization...'})
@@ -46,45 +50,100 @@ def run_ai_transcription(minutes_id):
             raise Exception("No audio file found for this meeting.")
             
         audio_file_path = minutes.audio_file.path
-        uploaded_file = genai.upload_file(path=audio_file_path)
         
-        minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Audio uploaded to AI. Generating transcript...'})
+        minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Loading and splitting audio file...'})
         minutes.save()
         
+        from pydub import AudioSegment
+        import tempfile
+        import os
+        
+        audio = AudioSegment.from_file(audio_file_path)
+        chunk_length_ms = 15 * 60 * 1000 # 15 minutes
+        chunks = [audio[i:i+chunk_length_ms] for i in range(0, len(audio), chunk_length_ms)]
+        
+        if not chunks:
+            raise Exception("Audio file is empty or corrupted.")
+            
+        transcript_data = []
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"""
-        You are an expert audio transcriber. Listen to the provided audio file of a meeting and transcribe it.
-        Identify the different speakers (e.g. Speaker 1, Speaker 2) or use the following participant names if you can reliably match voices (but defaulting to Speaker 1, Speaker 2 is fine): {participant_names}.
         
-        Output EXACTLY a valid JSON array of objects with no markdown block formatting (do not wrap in ```json).
-        Each object must have:
-        - "timestamp": "[MM:SS]" representing the approximate time.
-        - "speaker": The name of the speaker.
-        - "text": The text they spoke.
-        
-        Example:
-        [
-            {{"timestamp": "[00:00]", "speaker": "Speaker 1", "text": "Hello everyone."}}
-        ]
-        """
-        
-        response = model.generate_content([uploaded_file, prompt])
-        result_text = response.text.strip()
-        
-        # Cleanup uploaded file from Gemini
-        try:
-            genai.delete_file(uploaded_file.name)
-        except:
-            pass
+        for i, chunk in enumerate(chunks):
+            minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f'Transcribing Part {i+1}/{len(chunks)}...'})
+            minutes.save()
             
-        if result_text.startswith("```json"):
-            result_text = result_text[7:]
-        if result_text.startswith("```"):
-            result_text = result_text[3:]
-        if result_text.endswith("```"):
-            result_text = result_text[:-3]
-            
-        transcript_data = json.loads(result_text)
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                chunk.export(tmp.name, format="mp3")
+                tmp_path = tmp.name
+                
+            uploaded_file = None
+            try:
+                uploaded_file = genai.upload_file(path=tmp_path)
+                
+                chunk_start_ms = i * chunk_length_ms
+                start_min = (chunk_start_ms // 1000) // 60
+                start_sec = (chunk_start_ms // 1000) % 60
+                
+                prompt = f"""
+                You are an expert audio transcriber. Listen to the provided audio file of a meeting and transcribe it.
+                Identify the different speakers (e.g. Speaker 1, Speaker 2) or use the following participant names if you can reliably match voices (but defaulting to Speaker 1, Speaker 2 is fine): {participant_names}.
+                
+                This is Part {i+1} of a longer meeting. The audio in this file starts at {start_min:02d}:{start_sec:02d} in the full meeting.
+                Please ensure the timestamps you provide are relative to the BEGINNING of this chunk (starting at 00:00).
+                
+                Output EXACTLY a valid JSON array of objects with no markdown block formatting (do not wrap in ```json).
+                Each object must have:
+                - "timestamp": "[MM:SS]" representing the approximate time.
+                - "speaker": The name of the speaker.
+                - "text": The text they spoke.
+                
+                Example:
+                [
+                    {{"timestamp": "[00:00]", "speaker": "Speaker 1", "text": "Hello everyone."}}
+                ]
+                """
+                
+                response = model.generate_content([uploaded_file, prompt])
+                result_text = response.text.strip()
+                
+                if result_text.startswith("```json"):
+                    result_text = result_text[7:]
+                if result_text.startswith("```"):
+                    result_text = result_text[3:]
+                if result_text.endswith("```"):
+                    result_text = result_text[:-3]
+                    
+                chunk_transcript = json.loads(result_text)
+                
+                # Adjust timestamps
+                for entry in chunk_transcript:
+                    ts = entry.get('timestamp', '[00:00]')
+                    try:
+                        ts = ts.strip('[]')
+                        m, s = map(int, ts.split(':'))
+                        total_s = (m * 60) + s + (chunk_start_ms // 1000)
+                        new_m = total_s // 60
+                        new_s = total_s % 60
+                        entry['timestamp'] = f"[{new_m:02d}:{new_s:02d}]"
+                    except:
+                        pass
+                    transcript_data.append(entry)
+                    
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except:
+                        pass
+                if uploaded_file:
+                    try:
+                        genai.delete_file(uploaded_file.name)
+                    except:
+                        pass
+                        
+        minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Merging Transcript...'})
+        minutes.save()
+        
         minutes.history = json.dumps(transcript_data)
         
         # Calculate Speaker Metrics
@@ -178,31 +237,9 @@ def run_ai_transcription(minutes_id):
         minutes = MeetingMinutes.objects.get(id=minutes_id)
         error_msg = str(e)
         
-        if "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg or "not configured" in error_msg:
-            # Fallback to Mock processing for testing without valid API key
-            minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'API Key invalid or missing. Using mock AI transcript for testing.'})
-            minutes.save()
-            
-            transcript_data = [
-                {"timestamp": "[00:00]", "speaker": "Speaker 1", "text": "Thank you everyone for joining today's meeting. Let's go over the new project updates."},
-                {"timestamp": "[00:15]", "speaker": "Speaker 2", "text": "I've completed the initial design phase. We are ready to move to development."},
-                {"timestamp": "[00:30]", "speaker": "Speaker 1", "text": "Great! John, please ensure the backend API is set up by next week."}
-            ]
-            
-            minutes.history = json.dumps(transcript_data)
-            minutes.speaker_metrics = {
-                'Speaker 1': {'time': '00:00', 'count': 2, 'percentage': 66},
-                'Speaker 2': {'time': '00:00', 'count': 1, 'percentage': 33}
-            }
-            minutes.ai_summary = "The meeting focused on the new project updates. The design phase is complete and the team is moving to development."
-            minutes.decisions = ["Move project to development phase."]
-            minutes.action_items_raw = [{"task": "Set up backend API", "owner": "John", "priority": "HIGH"}]
-            minutes.status = 'READY'
-            minutes.save()
-        else:
-            minutes.status = 'NO_TRANSCRIPT'
-            minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f"Error processing transcription: {error_msg}"})
-            minutes.save()
+        minutes.status = 'NO_TRANSCRIPT'
+        minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f"Error processing transcription: {error_msg}"})
+        minutes.save()
 
 def start_ai_processing(minutes_id):
     thread = threading.Thread(target=run_ai_transcription, args=(minutes_id,))
@@ -230,6 +267,11 @@ def run_ai_text_processing(minutes_id):
         api_key = os.getenv("GEMINI_API_KEY", "")
         if not api_key or api_key == "your_gemini_api_key_here":
             raise Exception("GEMINI_API_KEY is not configured in .env")
+            
+        # Log masked key
+        masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "***"
+        print(f"DEBUG: Loaded GEMINI_API_KEY for text processing: {masked_key}")
+        
         genai.configure(api_key=api_key)
         
         model = genai.GenerativeModel('gemini-1.5-flash')
@@ -355,29 +397,9 @@ def run_ai_text_processing(minutes_id):
         minutes = MeetingMinutes.objects.get(id=minutes_id)
         error_msg = str(e)
         
-        if "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg or "not configured" in error_msg:
-            minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'API Key invalid or missing. Using mock AI text transcript for testing.'})
-            minutes.save()
-            
-            transcript_data = [
-                {"timestamp": "[00:00]", "speaker": "Speaker 1", "text": "This is a mock text transcript due to an invalid API key."},
-                {"timestamp": "[00:05]", "speaker": "Speaker 2", "text": "I understand. The system is operating in fallback mode."}
-            ]
-            
-            minutes.history = json.dumps(transcript_data)
-            minutes.speaker_metrics = {
-                'Speaker 1': {'time': '00:00', 'count': 1, 'percentage': 50},
-                'Speaker 2': {'time': '00:00', 'count': 1, 'percentage': 50}
-            }
-            minutes.ai_summary = "Mock AI Summary generated successfully. The system detected an invalid API key and provided this placeholder data."
-            minutes.decisions = ["Fallback to mock data enabled."]
-            minutes.action_items_raw = [{"task": "Configure a valid Gemini API Key", "owner": "Admin", "priority": "HIGH"}]
-            minutes.status = 'READY'
-            minutes.save()
-        else:
-            minutes.status = 'NO_TRANSCRIPT'
-            minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f'Error processing text: {error_msg}'})
-            minutes.save()
+        minutes.status = 'NO_TRANSCRIPT'
+        minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f'Error processing text: {error_msg}'})
+        minutes.save()
 
 def start_ai_text_processing(minutes_id):
     thread = threading.Thread(target=run_ai_text_processing, args=(minutes_id,))
