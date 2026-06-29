@@ -224,7 +224,7 @@
         <h5 class="modal-title text-white d-flex align-items-center gap-2" id="createMeetingModalLabel"><i data-lucide="calendar-plus" class="icon-purple"></i> Create New Meeting</h5>
         <button type="button" class="btn-close" style="filter: var(--close-btn-filter);" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form method="POST" action="{% url 'meetings' %}">
+      <form method="POST" action="{% url 'meetings' %}" enctype="multipart/form-data">
           {% csrf_token %}
           <div class="modal-body text-white">
               <div class="mb-3">
@@ -263,56 +263,37 @@
                   <input type="url" name="meeting_link" id="meetingLinkInput" class="form-control glass-input text-white" placeholder="Paste meeting link here (e.g. https://zoom.us/j/...)">
               </div>
               <div class="mb-3">
-                  <label class="form-label text-secondary small mb-2">Roles to Invite</label>
+                  <label class="form-label text-secondary small mb-2">Employees to Invite</label>
                   <div class="dropdown">
-                      <button id="rolesDropdownBtn" class="btn form-control glass-input text-white text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="background-color: rgba(0,0,0,0.2);">
-                          <span id="rolesDropdownText">Select roles...</span>
+                      <button id="usersDropdownBtn" class="btn form-control glass-input text-white text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="background-color: rgba(0,0,0,0.2);">
+                          <span id="usersDropdownText">Select employees...</span>
                           <i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>
                       </button>
-                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">
+                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); max-height: 250px; overflow-y: auto;">
+                          {% for u in users %}
                           <li>
                               <div class="form-check custom-checkbox mb-2">
-                                  <input class="form-check-input" type="checkbox" name="roles" value="ADMIN" id="roleAdminDrop">
-                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleAdminDrop">Owner/Admin</label>
+                                  <input class="form-check-input user-checkbox" type="checkbox" name="users" value="{{ u.id }}" id="userDrop{{ u.id }}">
+                                  <label class="form-check-label" style="color: #ffffff !important;" for="userDrop{{ u.id }}">{{ u.username }} ({{ u.email }})</label>
                               </div>
                           </li>
-                          <li>
-                              <div class="form-check custom-checkbox mb-2">
-                                  <input class="form-check-input" type="checkbox" name="roles" value="TL" id="roleTLDrop">
-                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleTLDrop">Team Leader</label>
-                              </div>
-                          </li>
-                          <li>
-                              <div class="form-check custom-checkbox mb-2">
-                                  <input class="form-check-input" type="checkbox" name="roles" value="EMPLOYEE" id="roleEmployeeDrop">
-                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleEmployeeDrop">Employee</label>
-                              </div>
-                          </li>
-                          <li>
-                              <div class="form-check custom-checkbox">
-                                  <input class="form-check-input" type="checkbox" name="roles" value="INTERN" id="roleInternDrop">
-                                  <label class="form-check-label" style="color: #ffffff !important;" for="roleInternDrop">Intern</label>
-                              </div>
-                          </li>
+                          {% endfor %}
                       </ul>
                   </div>
-                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the boxes inside the dropdown to select multiple roles.</small>
+                  <small class="text-secondary d-block mt-2" style="font-size: 0.75rem;">Check the boxes to select participants.</small>
                   
                   <script>
                   document.addEventListener('DOMContentLoaded', function() {
-                      const roleCheckboxes = document.querySelectorAll('.dropdown-menu input[name="roles"]');
-                      const dropdownText = document.getElementById('rolesDropdownText');
+                      const userCheckboxes = document.querySelectorAll('.user-checkbox');
+                      const dropdownText = document.getElementById('usersDropdownText');
                       
-                      roleCheckboxes.forEach(cb => {
+                      userCheckboxes.forEach(cb => {
                           cb.addEventListener('change', () => {
-                              const selected = Array.from(roleCheckboxes)
-                                  .filter(i => i.checked)
-                                  .map(i => i.nextElementSibling.textContent.trim());
-                              
-                              if (selected.length > 0) {
-                                  dropdownText.textContent = selected.join(', ');
+                              const selectedCount = Array.from(userCheckboxes).filter(i => i.checked).length;
+                              if (selectedCount > 0) {
+                                  dropdownText.textContent = `${selectedCount} employee(s) selected`;
                               } else {
-                                  dropdownText.textContent = 'Select roles...';
+                                  dropdownText.textContent = 'Select employees...';
                               }
                           });
                       });
@@ -320,8 +301,18 @@
                   </script>
               </div>
               <div class="mb-3">
+                  <label class="form-label text-secondary small mb-1">External Guests (Emails)</label>
+                  <textarea name="external_emails" class="form-control glass-input text-white" rows="2" placeholder="e.g. guest1@example.com, guest2@test.com"></textarea>
+                  <small class="text-secondary d-block mt-1" style="font-size: 0.75rem;">Separate multiple emails with commas.</small>
+              </div>
+              <div class="mb-3">
                   <label class="form-label text-secondary small mb-1">Description / Agenda</label>
                   <textarea name="description" class="form-control glass-input text-white" rows="3" placeholder="Brief agenda..."></textarea>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-secondary small mb-1">Attachment (Optional)</label>
+                  <input type="file" name="attachment" class="form-control glass-input text-white">
+                  <small class="text-secondary d-block mt-1" style="font-size: 0.75rem;">Upload a document (PDF, DOCX, etc.)</small>
               </div>
           </div>
           <div class="modal-footer border-secondary border-opacity-25">
@@ -336,33 +327,142 @@
 <!-- Meeting Detail Modals -->
 {% for m in meetings %}
 <div class="modal fade" id="meetingDetailModal{{ m.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
     <div class="modal-content glass-card" style="background: var(--card-bg); border: 1px solid var(--glass-border);">
       <div class="modal-header border-secondary border-opacity-25">
-        <h5 class="modal-title text-white">{{ m.title }}</h5>
+        <h5 class="modal-title text-white d-flex align-items-center gap-2"><i data-lucide="info" class="icon-purple"></i> {{ m.title }}</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-white">
-          <p class="text-secondary small mb-3"><strong>Type:</strong> {{ m.get_meeting_type_display|default:m.meeting_type }}</p>
-          {% if m.location %}
-          <p class="text-secondary small mb-3"><strong>Location:</strong> {{ m.location }}</p>
-          {% endif %}
-          {% if m.meeting_link %}
-          <p class="text-secondary small mb-3"><strong>Meeting Link:</strong> <a href="{{ m.meeting_link }}" target="_blank" class="text-info">{{ m.meeting_link }}</a></p>
-          {% endif %}
-          <p class="text-secondary small mb-3"><strong>Date & Time:</strong> {{ m.date }} at {{ m.time }}</p>
-          <p class="text-secondary small mb-3"><strong>Duration:</strong> {{ m.duration }} mins</p>
-          <p class="text-secondary small mb-3"><strong>Description:</strong><br/> {{ m.description|default:"No description provided." }}</p>
+          <div class="row mb-4">
+              <div class="col-md-6">
+                  <p class="text-secondary small mb-2"><strong>Type:</strong> <span class="badge bg-secondary text-white">{{ m.get_meeting_type_display|default:m.meeting_type }}</span></p>
+                  <p class="text-secondary small mb-2"><strong>Date & Time:</strong> {{ m.date }} at {{ m.time }} ({{ m.duration }} mins)</p>
+                  <p class="text-secondary small mb-2"><strong>Location/Link:</strong> 
+                      {% if m.meeting_link %}
+                          <a href="{{ m.meeting_link }}" target="_blank" class="text-info">{{ m.meeting_link }}</a>
+                      {% else %}
+                          {{ m.location|default:"N/A" }}
+                      {% endif %}
+                  </p>
+                  <p class="text-secondary small mb-2"><strong>Organizer:</strong> {{ m.created_by.username }}</p>
+              </div>
+              <div class="col-md-6">
+                  <p class="text-secondary small mb-1"><strong>Description / Agenda:</strong></p>
+                  <div class="p-2 rounded" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                      {{ m.description|default:"No description provided."|linebreaksbr }}
+                  </div>
+                  {% if m.attachment %}
+                  <div class="mt-3 p-2 rounded d-flex align-items-center gap-2" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                      <i data-lucide="paperclip" class="text-success" style="width: 16px;"></i>
+                      <a href="{{ m.attachment.url }}" target="_blank" class="text-success text-decoration-none small">Download Attachment</a>
+                  </div>
+                  {% endif %}
+              </div>
+          </div>
+          
+          <!-- KPI Cards -->
+          <div class="row g-3 mb-4">
+              <div class="col-md-2 col-6">
+                  <div class="p-3 text-center rounded glass-card h-100" style="background: rgba(255,255,255,0.03);">
+                      <div class="text-secondary small mb-1">Total Invited</div>
+                      <h4 class="mb-0 text-white" id="totalCount{{ m.id }}">{{ m.total_invited }}</h4>
+                  </div>
+              </div>
+              <div class="col-md-2 col-6">
+                  <div class="p-3 text-center rounded glass-card h-100 border-success border-opacity-25" style="background: rgba(16, 185, 129, 0.05);">
+                      <div class="text-success small mb-1">Accepted</div>
+                      <h4 class="mb-0 text-white" id="acceptedCount{{ m.id }}">{{ m.accepted_count }}</h4>
+                  </div>
+              </div>
+              <div class="col-md-2 col-6">
+                  <div class="p-3 text-center rounded glass-card h-100 border-danger border-opacity-25" style="background: rgba(239, 68, 68, 0.05);">
+                      <div class="text-danger small mb-1">Declined</div>
+                      <h4 class="mb-0 text-white" id="declinedCount{{ m.id }}">{{ m.declined_count }}</h4>
+                  </div>
+              </div>
+              <div class="col-md-2 col-6">
+                  <div class="p-3 text-center rounded glass-card h-100 border-warning border-opacity-25" style="background: rgba(245, 158, 11, 0.05);">
+                      <div class="text-warning small mb-1">Pending</div>
+                      <h4 class="mb-0 text-white" id="pendingCount{{ m.id }}">{{ m.pending_count }}</h4>
+                  </div>
+              </div>
+              <div class="col-md-4 col-12">
+                  <div class="p-3 rounded glass-card h-100" style="background: rgba(255,255,255,0.03);">
+                      <div class="d-flex justify-content-between text-secondary small mb-2">
+                          <span>Attendance</span>
+                          <span id="attendanceProgressText{{ m.id }}">{{ m.attendance_progress }}%</span>
+                      </div>
+                      <div class="progress" style="height: 8px; background: rgba(255,255,255,0.1);">
+                          <div class="progress-bar bg-info" id="attendanceProgressBar{{ m.id }}" role="progressbar" style="width: {{ m.attendance_progress }}%;"></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- Registered Team Members Table -->
+          <h6 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="users" class="icon-purple"></i> Registered Team Members</h6>
+          <div class="table-responsive">
+              <table class="table table-dark table-hover align-middle mb-0" style="background: transparent;">
+                  <thead>
+                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                          <th class="text-secondary small fw-normal py-3">PARTICIPANT</th>
+                          <th class="text-secondary small fw-normal py-3">EMAIL</th>
+                          <th class="text-secondary small fw-normal py-3 text-center">RSVP STATUS</th>
+                          <th class="text-secondary small fw-normal py-3 text-center">RESPONSE TIME</th>
+                          <th class="text-secondary small fw-normal py-3 text-center">JOIN / LEAVE</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for p in m.participants.all %}
+                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                          <td class="py-3">
+                              <div class="d-flex align-items-center gap-2">
+                                  <div class="rounded-circle d-flex align-items-center justify-content-center text-white small fw-bold" style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--secondary));">
+                                      {% if p.user %}{{ p.user.username|make_list|first|upper }}{% else %}{{ p.external_name|make_list|first|upper|default:"?" }}{% endif %}
+                                  </div>
+                                  <div>
+                                      <span class="text-white d-block">{% if p.user %}{{ p.user.username }}{% else %}{{ p.external_name }} (Guest){% endif %}</span>
+                                  </div>
+                              </div>
+                          </td>
+                          <td class="text-secondary py-3">{% if p.user %}{{ p.user.email }}{% else %}{{ p.external_email }}{% endif %}</td>
+                          <td class="text-center py-3">
+                              {% if p.rsvp_status == 'ACCEPTED' %}
+                                  <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3 py-2">Accepted</span>
+                              {% elif p.rsvp_status == 'DECLINED' %}
+                                  <span class="badge bg-danger bg-opacity-25 text-danger rounded-pill px-3 py-2">Declined</span>
+                              {% else %}
+                                  <span class="badge bg-warning bg-opacity-25 text-warning rounded-pill px-3 py-2">Pending</span>
+                              {% endif %}
+                          </td>
+                          <td class="text-secondary text-center py-3 small">
+                              {{ p.rsvp_time|date:"M d, Y h:i A"|default:"-" }}
+                          </td>
+                          <td class="text-secondary text-center py-3 small">
+                              {% if p.join_time %}
+                                  <span class="text-success"><i data-lucide="log-in" style="width: 14px; height:14px;"></i> {{ p.join_time|time:"h:i A" }}</span>
+                              {% endif %}
+                              {% if p.leave_time %}
+                                  <br><span class="text-danger"><i data-lucide="log-out" style="width: 14px; height:14px;"></i> {{ p.leave_time|time:"h:i A" }}</span>
+                              {% endif %}
+                              {% if not p.join_time and not p.leave_time %}
+                                  -
+                              {% endif %}
+                          </td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
       </div>
       <div class="modal-footer border-secondary border-opacity-25">
         <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
-        {% if m.meeting_type == 'ONLINE' %}
-        {% if m.meeting_link %}
-            <a href="{{ m.meeting_link }}" target="_blank" class="btn btn-success rounded-pill px-4">Join Zoom Meeting</a>
-        {% else %}
-            <button class="btn btn-secondary rounded-pill px-4" disabled>No Link Available</button>
-        {% endif %}
-        {% endif %}
+        
+        <div class="d-flex gap-2 ms-auto">
+            <a href="{% url 'join_meeting' m.id %}" class="btn btn-success rounded-pill px-4">Join Meeting</a>
+            <a href="{% url 'leave_meeting' m.id %}" class="btn btn-outline-danger rounded-pill px-4">Leave Meeting</a>
+        </div>
       </div>
     </div>
   </div>

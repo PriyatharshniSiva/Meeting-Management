@@ -16,6 +16,12 @@ urlpatterns = [
     path('calendar/update_time/', views.update_meeting_time, name='update_meeting_time'),
     path('attendance/', views.attendance_view, name='attendance'),
     path('attendance/update/<int:participant_id>/', views.update_attendance, name='update_attendance'),
+    
+    path('meetings/rsvp/<int:meeting_id>/', views.rsvp_view, name='rsvp'),
+    path('meetings/rsvp_email/<int:meeting_id>/', views.rsvp_email_view, name='rsvp_email'),
+    path('meetings/join/<int:meeting_id>/', views.join_meeting, name='join_meeting'),
+    path('meetings/leave/<int:meeting_id>/', views.leave_meeting, name='leave_meeting'),
+    
     path('mom/', views.mom_view, name='mom'),
     path('mom/<int:meeting_id>/', views.mom_view, name='mom_detail'),
     path('mom/<int:meeting_id>/upload_audio/', views.upload_audio_for_transcription, name='upload_audio_for_transcription'),

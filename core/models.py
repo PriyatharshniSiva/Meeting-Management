@@ -29,13 +29,38 @@ class Meeting(models.Model):
     meeting_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='ONLINE')
     location = models.CharField(max_length=255, blank=True, null=True)
     meeting_link = models.URLField(max_length=500, blank=True, null=True, help_text="Link for online meetings")
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
+    attachment = models.FileField(upload_to='meeting_attachments/', null=True, blank=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_meetings')
     created_at = models.DateTimeField(auto_now_add=True)
     target_roles = models.JSONField(default=list, blank=True, help_text="List of roles invited to this meeting")
 
     def __str__(self):
         return self.title
+        
+    @property
+    def total_invited(self):
+        return self.participants.count()
+        
+    @property
+    def accepted_count(self):
+        return self.participants.filter(rsvp_status='ACCEPTED').count()
+        
+    @property
+    def declined_count(self):
+        return self.participants.filter(rsvp_status='DECLINED').count()
+        
+    @property
+    def pending_count(self):
+        return self.participants.filter(rsvp_status='PENDING').count()
+        
+    @property
+    def attendance_progress(self):
+        total = self.participants.count()
+        if total == 0:
+            return 0
+        attended = self.participants.filter(attendance_status='ATTENDED').count()
+        return int((attended / total) * 100)
 
 class Participant(models.Model):
     STATUS_CHOICES = (
@@ -51,9 +76,24 @@ class Participant(models.Model):
         ('TENTATIVE', 'Tentative'),
     )
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name='participants')
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
+    external_email = models.EmailField(blank=True, null=True)
+    external_name = models.CharField(max_length=255, blank=True, null=True)
     rsvp_status = models.CharField(max_length=20, choices=RSVP_CHOICES, default='PENDING')
     attendance_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    rsvp_time = models.DateTimeField(null=True, blank=True)
+    join_time = models.DateTimeField(null=True, blank=True)
+    leave_time = models.DateTimeField(null=True, blank=True)
+    
+class EmailLog(models.Model):
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name='email_logs')
+    recipient_email = models.EmailField()
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"To: {self.recipient_email} - {self.subject}"
 
 class MeetingMinutes(models.Model):
     STATUS_CHOICES = (

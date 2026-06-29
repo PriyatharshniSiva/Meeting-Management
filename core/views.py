@@ -156,6 +156,7 @@ def meetings_view(request):
         location = request.POST.get('location', '')
         meeting_link = request.POST.get('meeting_link', '')
         desc = request.POST.get('description')
+        attachment = request.FILES.get('attachment')
         target_roles = request.POST.getlist('roles')
         
         if not date or not time:
@@ -181,33 +182,72 @@ def meetings_view(request):
             location=location,
             meeting_link=meeting_link,
             description=desc, created_by=request.user,
-            target_roles=target_roles
+            target_roles=target_roles,
+            attachment=attachment
         )
         
         # Refresh to convert string date/time to python objects
         meeting.refresh_from_db()
         
         from core.models import CustomUser, Participant, InAppNotification
-        users_to_invite = CustomUser.objects.filter(role__in=target_roles)
         
-        participants = []
+        target_user_ids = request.POST.getlist('users')
+        external_emails_str = request.POST.get('external_emails', '')
+        
+        # If roles were used (fallback)
+        if not target_user_ids and target_roles:
+            target_user_ids = list(CustomUser.objects.filter(role__in=target_roles).values_list('id', flat=True))
+            
+        users_to_invite = CustomUser.objects.filter(id__in=target_user_ids)
+        
+        participants_to_create = []
         notifications = []
+        
+        # Internal Employees
         for u in users_to_invite:
-            participants.append(Participant(meeting=meeting, user=u, rsvp_status='PENDING', attendance_status='PENDING'))
+            participants_to_create.append(Participant(meeting=meeting, user=u, rsvp_status='PENDING', attendance_status='PENDING'))
             notifications.append(InAppNotification(
                 user=u, message=f"You have been invited to a new meeting: {title} on {date} at {time}",
                 notification_type='INVITE', related_meeting=meeting
             ))
-        Participant.objects.bulk_create(participants)
+            
+        # External Emails
+        if external_emails_str:
+            import re
+            emails = [email.strip() for email in re.split(r'[,\n]+', external_emails_str) if email.strip()]
+            for email in emails:
+                # Name fallback from email prefix
+                name_prefix = email.split('@')[0].replace('.', ' ').title()
+                participants_to_create.append(Participant(
+                    meeting=meeting, 
+                    external_email=email, 
+                    external_name=name_prefix,
+                    rsvp_status='PENDING', 
+                    attendance_status='PENDING'
+                ))
+                
+        # Bulk Create
+        created_participants = Participant.objects.bulk_create(participants_to_create)
         InAppNotification.objects.bulk_create(notifications)
+        
+        # We need the created participants with their IDs to pass to send_meeting_invites
+        # bulk_create does not set PKs in SQLite in all versions, but let's query them
+        all_participants = Participant.objects.filter(meeting=meeting)
         
         from core.utils import send_meeting_invites
         from django.contrib import messages
-        try:
-            send_meeting_invites(meeting, users_to_invite)
-            messages.success(request, f"Meeting created successfully! Invitations sent to {len(users_to_invite)} participants.")
-        except Exception as e:
-            messages.error(request, f"Meeting created, but there was an error sending emails: {e}")
+        import threading
+        
+        # Send emails in background
+        def background_send(meeting_instance, participant_list):
+            try:
+                send_meeting_invites(meeting_instance, participant_list)
+            except Exception as e:
+                print(f"Error sending background emails: {e}")
+                
+        threading.Thread(target=background_send, args=(meeting, list(all_participants))).start()
+        
+        messages.success(request, f"Meeting created successfully! Invitations sent to {len(all_participants)} participants.")
         
         # Broadcast notification via WebSocket
         from asgiref.sync import async_to_sync
@@ -288,7 +328,8 @@ def invite_user_view(request, user_id):
     except CustomUser.DoesNotExist:
         messages.error(request, "User not found.")
     except Exception as e:
-        messages.error(request, f"Failed to send email to {user_to_invite.email}.")
+        print(f"EMAIL ERROR: {str(e)}")
+        messages.error(request, f"Failed to send email to {user_to_invite.email}. Please check your SMTP settings in the .env file. Error: {str(e)}")
         
     return redirect('meetings')
 
@@ -576,19 +617,147 @@ def notifications_view(request):
 @login_required
 def rsvp_view(request, meeting_id):
     if request.method == 'POST':
-        from core.models import Participant
+        from core.models import Participant, InAppNotification
         from django.contrib import messages
+        from django.utils import timezone
+        
         status = request.POST.get('status') # ACCEPTED, DECLINED, TENTATIVE
         try:
             participant = Participant.objects.get(meeting_id=meeting_id, user=request.user)
             if status in ['ACCEPTED', 'DECLINED', 'TENTATIVE']:
                 participant.rsvp_status = status
+                participant.rsvp_time = timezone.now()
                 participant.save()
                 messages.success(request, f"RSVP updated to {status}.")
+                
+                # Notify Organizer
+                InAppNotification.objects.create(
+                    user=participant.meeting.created_by,
+                    message=f"{request.user.username} has {status.lower()} the invitation for '{participant.meeting.title}'.",
+                    notification_type='SYSTEM',
+                    related_meeting=participant.meeting
+                )
+                
+                # Broadcast WebSocket Notification
+                from asgiref.sync import async_to_sync
+                from channels.layers import get_channel_layer
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    'meeting_notifications',
+                    {
+                        'type': 'meeting_message',
+                        'message': f"{request.user.username} has {status.lower()} your meeting invitation."
+                    }
+                )
         except Participant.DoesNotExist:
             messages.error(request, "You are not a participant of this meeting.")
             
     return redirect(request.META.get('HTTP_REFERER', 'notifications'))
+
+def rsvp_email_view(request, meeting_id):
+    from core.models import Participant, InAppNotification
+    from django.utils import timezone
+    from django.http import HttpResponse
+    
+    participant_id = request.GET.get('participant_id')
+    status = request.GET.get('status')
+    
+    if not participant_id or status not in ['ACCEPTED', 'DECLINED']:
+        return HttpResponse("Invalid request parameters.", status=400)
+        
+    try:
+        participant = Participant.objects.get(id=participant_id, meeting_id=meeting_id)
+        participant.rsvp_status = status
+        participant.rsvp_time = timezone.now()
+        participant.save()
+        
+        participant_name = participant.user.username if participant.user else participant.external_name
+        
+        # Notify Organizer
+        InAppNotification.objects.create(
+            user=participant.meeting.created_by,
+            message=f"{participant_name} has {status.lower()} the invitation for '{participant.meeting.title}'.",
+            notification_type='SYSTEM',
+            related_meeting=participant.meeting
+        )
+        
+        # Broadcast WebSocket
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            'meeting_notifications',
+            {
+                'type': 'meeting_message',
+                'message': f"{participant_name} has {status.lower()} your meeting invitation."
+            }
+        )
+        
+        html = f"""
+        <html>
+            <body style='font-family:sans-serif; text-align:center; margin-top:50px;'>
+                <h2>RSVP Successful!</h2>
+                <p>You have <strong>{status.lower()}</strong> the invitation for <strong>{participant.meeting.title}</strong>.</p>
+                <p>You may now close this window.</p>
+            </body>
+        </html>
+        """
+        return HttpResponse(html)
+        
+    except Participant.DoesNotExist:
+        return HttpResponse("Participant or meeting not found.", status=404)
+
+@login_required
+def join_meeting(request, meeting_id):
+    from core.models import Participant, Meeting, InAppNotification
+    from django.utils import timezone
+    
+    try:
+        meeting = Meeting.objects.get(id=meeting_id)
+        participant = Participant.objects.get(meeting=meeting, user=request.user)
+        
+        participant.join_time = timezone.now()
+        participant.attendance_status = 'ATTENDED'
+        participant.save()
+        
+        # Notify Organizer
+        InAppNotification.objects.create(
+            user=meeting.created_by,
+            message=f"{request.user.username} has joined the meeting '{meeting.title}'.",
+            notification_type='SYSTEM',
+            related_meeting=meeting
+        )
+        
+        if meeting.meeting_link:
+            return redirect(meeting.meeting_link)
+    except Exception as e:
+        pass
+        
+    return redirect('meetings')
+
+@login_required
+def leave_meeting(request, meeting_id):
+    from core.models import Participant, Meeting, InAppNotification
+    from django.utils import timezone
+    
+    try:
+        meeting = Meeting.objects.get(id=meeting_id)
+        participant = Participant.objects.get(meeting=meeting, user=request.user)
+        
+        participant.leave_time = timezone.now()
+        participant.save()
+        
+        # Notify Organizer
+        InAppNotification.objects.create(
+            user=meeting.created_by,
+            message=f"{request.user.username} has left the meeting '{meeting.title}'.",
+            notification_type='SYSTEM',
+            related_meeting=meeting
+        )
+    except Exception as e:
+        pass
+        
+    return redirect('meetings')
 
 @login_required
 def settings_view(request):
