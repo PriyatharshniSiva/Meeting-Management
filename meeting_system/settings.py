@@ -139,10 +139,10 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 LOGIN_URL = '/login/'
 
 # Email Configuration for Real Email Delivery (SMTP)
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip()
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
+import os
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'priyatharshni279@gmail.com').strip()
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'yhxf yczr ptoy yoyo').strip()
 
-# Only use SMTP backend if real user credentials are set in .env (not placeholder)
 if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD and 'your-email' not in EMAIL_HOST_USER:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
@@ -150,7 +150,7 @@ else:
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ['true', '1']
+EMAIL_USE_TLS = str(os.getenv('EMAIL_USE_TLS', 'True')).lower() in ['true', '1']
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER if (EMAIL_HOST_USER and 'your-email' not in EMAIL_HOST_USER) else 'noreply@meetingmind.com'
 
 

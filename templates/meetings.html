@@ -136,7 +136,7 @@
         <div class="glass-card flex-grow-1 overflow-auto" style="max-height: 500px;">
             <div class="d-flex justify-content-between align-items-center mb-3 sticky-top" style="background: var(--card-bg); padding-bottom:10px;">
                 <h6 class="text-white m-0 d-flex align-items-center gap-2"><i data-lucide="clock" class="icon-purple"></i> Upcoming</h6>
-                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">4 Today</span>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary rounded-pill">{{ meetings|length }} Upcoming</span>
             </div>
             
             <div class="d-flex flex-column gap-3">
@@ -245,12 +245,10 @@
     }
 
     function generateMeetingLink() {
-        const chars = '0123456789';
-        const segment = () => Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const meetingId = segment();
-        const pwd = Math.random().toString(36).slice(-8);
         const linkInput = document.getElementById('meetingLinkInput');
-        linkInput.value = `https://zoom.us/j/${meetingId}?pwd=${pwd}`;
+        
+        // Point to the official Zoom Test Meeting so users don't get a 3001 Invalid ID error in the mock environment
+        linkInput.value = `https://zoom.us/test`;
         
         // Brief highlight effect
         linkInput.style.transition = 'background-color 0.3s';
@@ -320,18 +318,18 @@
 
               <!-- Employees to Invite -->
               <div class="form-group-compact">
-                  <label class="form-label">Employees to Invite</label>
+                  <label class="form-label">Employees to Invite <span class="text-secondary fw-normal text-capitalize" style="font-size: 0.8em; letter-spacing: normal;">(Optional)</span></label>
                   <div class="dropdown">
                       <button id="usersDropdownBtn" class="btn btn-dropdown-custom form-control glass-input" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                           <span id="usersDropdownText" class="form-placeholder-text">Select employees...</span>
                           <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
                       </button>
-                      <ul class="dropdown-menu p-3 w-100" style="background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--border-color); max-height: 200px; overflow-y: auto;">
+                      <ul class="dropdown-menu p-3 w-100" style="max-height: 200px; overflow-y: auto;">
                           {% for u in users %}
                           <li>
                               <div class="form-check custom-checkbox mb-2">
                                   <input class="form-check-input user-checkbox" type="checkbox" name="users" value="{{ u.id }}" id="userDrop{{ u.id }}">
-                                  <label class="form-check-label text-white ms-1" for="userDrop{{ u.id }}">{{ u.username }} ({{ u.email }})</label>
+                                  <label class="form-check-label ms-1" for="userDrop{{ u.id }}">{{ u.username }} ({{ u.email }})</label>
                               </div>
                           </li>
                           {% endfor %}
@@ -340,13 +338,13 @@
                   <small class="form-help-text">Check the boxes to select participants.</small>
               </div>
 
-              <!-- External Guests -->
+              <!-- Roles -->
               <div class="form-group-compact">
-                  <label class="form-label">External Guests</label>
+                  <label class="form-label">Roles <span class="text-secondary fw-normal text-capitalize" style="font-size: 0.8em; letter-spacing: normal;">(Optional)</span></label>
                   <div class="dropdown" id="externalRolesDropdownContainer">
                       <button id="rolesDropdownBtn" class="btn btn-dropdown-custom form-control glass-input d-flex align-items-center justify-content-between flex-wrap gap-1 text-start w-100" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="min-height: 42px; height: auto !important; padding: 6px 14px !important;">
                           <div id="rolesSelectedContainer" class="d-flex flex-wrap align-items-center gap-1 flex-grow-1">
-                              <span id="rolesDropdownText" class="form-placeholder-text">Select external guest roles...</span>
+                              <span id="rolesDropdownText" class="form-placeholder-text">Select roles...</span>
                           </div>
                           <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: var(--text-secondary); flex-shrink: 0; margin-left: auto;"></i>
                       </button>

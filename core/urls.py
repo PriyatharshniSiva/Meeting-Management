@@ -24,11 +24,12 @@ urlpatterns = [
     
     path('mom/', views.mom_view, name='mom'),
     path('mom/<int:meeting_id>/', views.mom_view, name='mom_detail'),
+    path('mom/<int:meeting_id>/content/', views.mom_content_partial, name='mom_content_partial'),
     path('mom/<int:meeting_id>/upload_audio/', views.upload_audio_for_transcription, name='upload_audio_for_transcription'),
+    path('mom/<int:meeting_id>/paste_text/', views.paste_transcript_text, name='paste_transcript_text'),
     path('mom/<int:meeting_id>/check_status/', views.check_transcription_status, name='check_transcription_status'),
     path('mom/<int:meeting_id>/export/<str:format>/', views.export_transcript, name='export_transcript'),
     path('mom/autosave/<int:meeting_id>/', views.autosave_transcript, name='autosave_transcript'),
-    path('mom/process_audio/<int:meeting_id>/', views.process_audio, name='process_audio'),
     path('mom/latest/<int:meeting_id>/', views.latest_transcript, name='latest_transcript'),
     path('zoom/webhook/', views.zoom_webhook, name='zoom_webhook'),
     path('zoom/simulate/<int:meeting_id>/', views.simulate_zoom_webhook, name='simulate_zoom_webhook'),
@@ -37,6 +38,7 @@ urlpatterns = [
     path('notifications/unread-count/', views.unread_notification_count, name='unread_notification_count'),
     path('notifications/fetch/', views.fetch_notifications, name='fetch_notifications'),
     path('notifications/mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/clear-all/', views.clear_all_notifications, name='clear_all_notifications'),
     
     path('mom/generate_summary/<int:meeting_id>/', views.generate_summary, name='generate_summary'),
     path('mom/export/pdf/<int:meeting_id>/', views.export_pdf, name='export_pdf'),

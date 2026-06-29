@@ -26,214 +26,87 @@
 
 {% if not selected_meeting %}
 <div class="row">
-    <div class="col-12 text-center py-5">
-        <div class="p-5 glass-card d-inline-block border-secondary border-opacity-25">
-            <i data-lucide="inbox" class="text-secondary mb-3" style="width: 48px; height: 48px;"></i>
-            <h5 class="text-white mb-2">No Meeting Selected</h5>
-            <p class="text-secondary mb-0">Please select a meeting from the dropdown above to manage its transcript.</p>
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <h5 class="text-white mb-4 d-flex align-items-center gap-2"><i data-lucide="history" class="icon-blue"></i> Transcription History</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0" style="background: transparent;">
+                    <thead>
+                        <tr>
+                            <th class="text-secondary border-secondary" style="background: transparent;">Meeting Title</th>
+                            <th class="text-secondary border-secondary" style="background: transparent;">Date</th>
+                            <th class="text-secondary border-secondary" style="background: transparent;">Status</th>
+                            <th class="text-secondary border-secondary text-end" style="background: transparent;">Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in meetings %}
+                            {% if m.minutes.status == 'READY' %}
+                            <tr>
+                                <td class="text-white align-middle" style="background: transparent;">
+                                    <a href="/mom/{{ m.id }}/" class="text-white text-decoration-none fw-bold hover-primary">{{ m.title }}</a>
+                                </td>
+                                <td class="text-secondary align-middle" style="background: transparent;">{{ m.date|date:"M d, Y" }}</td>
+                                <td class="align-middle" style="background: transparent;"><span class="badge bg-success bg-opacity-25 text-success border border-success">Ready</span></td>
+                                <td class="text-end align-middle" style="background: transparent;">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{% url 'export_transcript' m.id 'pdf' %}" class="btn btn-sm btn-outline-danger" title="Download PDF"><i data-lucide="file-digit" style="width:14px;"></i> PDF</a>
+                                        <a href="{% url 'export_transcript' m.id 'docx' %}" class="btn btn-sm btn-outline-primary" title="Download Word"><i data-lucide="file" style="width:14px;"></i> Word</a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-secondary py-4" style="background: transparent;">No meetings available.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-center">
+                <p class="text-secondary small mb-0">Select a meeting from the dropdown above to manage, view, or generate a new transcript.</p>
+            </div>
         </div>
     </div>
 </div>
 {% else %}
 
-<div class="row g-4 page-transition" style="animation-delay: 0.1s;">
-    <!-- LEFT COLUMN: Main Processing / Transcript Area -->
-    <div class="col-lg-8">
-        <div class="glass-card h-100 position-relative">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="text-white m-0 d-flex align-items-center gap-2">
-                    <i data-lucide="mic" class="icon-red pulse-ring" style="box-shadow:none;"></i> 
-                    {% if minutes and minutes.status == 'READY' %}Transcript & AI Analytics{% else %}AI Audio Processing Pipeline{% endif %}
-                </h5>
-                {% if minutes and minutes.status == 'READY' %}
-                <div class="d-flex gap-2">
-                    <a href="{% url 'export_transcript' selected_meeting.id 'txt' %}" class="btn btn-sm btn-outline-secondary" title="Export as Text"><i data-lucide="file-text" style="width:14px;"></i> TXT</a>
-                    <a href="{% url 'export_transcript' selected_meeting.id 'docx' %}" class="btn btn-sm btn-outline-primary" title="Export as Word"><i data-lucide="file" style="width:14px;"></i> DOCX</a>
-                    <a href="{% url 'export_transcript' selected_meeting.id 'pdf' %}" class="btn btn-sm btn-outline-danger" title="Export as PDF"><i data-lucide="file-digit" style="width:14px;"></i> PDF</a>
-                </div>
-                {% endif %}
-            </div>
-            
-            {% if not minutes or minutes.status == 'PENDING' %}
-                <!-- Upload Interface -->
-                <div class="d-flex flex-column align-items-center justify-content-center py-5 rounded" style="border: 2px dashed rgba(255,255,255,0.2); background: rgba(0,0,0,0.1);" id="uploadZone">
-                    <i data-lucide="upload-cloud" class="text-primary mb-3" style="width: 64px; height: 64px;"></i>
-                    <h5 class="text-white">Upload Meeting Audio</h5>
-                    <p class="text-secondary small text-center mb-4">Supported formats: MP3, WAV, M4A, AAC<br>Max file size: 50MB</p>
-                    
-                    <form id="audioUploadForm" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <input type="file" id="audioFileInput" name="audio_file" accept=".mp3, .wav, .m4a, .aac" class="d-none" onchange="handleFileSelect(this)">
-                        <button type="button" class="btn btn-primary rounded-pill px-4" onclick="document.getElementById('audioFileInput').click()">
-                            Browse Files
-                        </button>
-                    </form>
-                    <p id="selectedFileName" class="text-success small mt-3 d-none fw-bold"></p>
-                    <button type="button" id="startUploadBtn" class="btn btn-success mt-2 d-none" onclick="startUpload()">Process Audio</button>
-                </div>
-            
-            {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
-                <!-- Processing Interface -->
-                <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                    <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status"></div>
-                    <h5 class="text-white mb-2" id="processingStateText">
-                        {% if minutes.status == 'GENERATING' %}Generating AI Summary...{% else %}Processing Audio...{% endif %}
-                    </h5>
-                    <p class="text-secondary small mb-4 text-center">Please wait while our AI transcription engine analyzes the audio,<br>performs speaker diarization, and extracts key insights.</p>
-                    
-                    <!-- Progress Tracker -->
-                    <div class="w-75">
-                        <div class="progress mb-2" style="height: 8px; background: rgba(255,255,255,0.1);">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="progressBar" style="width: {% if minutes.status == 'GENERATING' %}80%{% else %}40%{% endif %};"></div>
-                        </div>
-                        <div class="d-flex justify-content-between text-secondary" style="font-size: 0.7rem;">
-                            <span>Audio Uploaded</span>
-                            <span>Detecting Speakers</span>
-                            <span>Speech-to-Text</span>
-                            <span>AI Summary</span>
-                        </div>
-                    </div>
-                </div>
-
-            {% elif minutes.status == 'READY' %}
-                <!-- Transcript View -->
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <div class="input-group" style="max-width: 300px;">
-                        <span class="input-group-text glass-input border-end-0 text-secondary"><i data-lucide="search" style="width:14px;"></i></span>
-                        <input type="text" class="form-control glass-input border-start-0 text-white" id="searchInput" placeholder="Search transcript..." onkeyup="filterTranscript()">
-                    </div>
-                </div>
-                
-                <div class="form-control glass-input" style="height: 500px; overflow-y: auto; background: rgba(0,0,0,0.2);" id="transcriptContainer">
-                    {% for segment in transcript_lines %}
-                    <div class="mb-4 transcript-segment">
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary" style="font-size: 0.65rem;">{{ segment.timestamp }}</span>
-                            <strong class="text-primary speaker-name">{{ segment.speaker }}</strong>
-                        </div>
-                        <p class="text-white small m-0 ps-2 transcript-text" style="border-left: 2px solid var(--primary); font-size: 0.95rem; line-height: 1.6;">{{ segment.text }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- RIGHT COLUMN: Speaker Panel & AI Summary -->
-    <div class="col-lg-4">
-        
-        <!-- Speaker Panel -->
-        <div class="glass-card mb-4" style="border-color: rgba(59, 130, 246, 0.2);">
-            <h6 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="users" class="icon-blue"></i> Speaker Analysis</h6>
-            
-            {% if minutes.status == 'READY' and minutes.speaker_metrics %}
-                <div class="d-flex flex-column gap-3">
-                    {% for speaker, stats in minutes.speaker_metrics.items %}
-                    <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <strong class="text-primary">{{ speaker }}</strong>
-                            <span class="badge bg-primary bg-opacity-25 text-white">{{ stats.percentage }}%</span>
-                        </div>
-                        <div class="progress mb-2" style="height: 4px; background: rgba(255,255,255,0.1);">
-                            <div class="progress-bar bg-primary" style="width: {{ stats.percentage }}%;"></div>
-                        </div>
-                        <div class="d-flex justify-content-between text-secondary" style="font-size: 0.75rem;">
-                            <span><i data-lucide="clock" style="width:12px;"></i> {{ stats.time }}</span>
-                            <span><i data-lucide="mic" style="width:12px;"></i> {{ stats.count }} segments</span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% elif minutes.status == 'PENDING' or not minutes %}
-                <p class="text-secondary small text-center py-3 m-0">Upload audio to generate speaker analytics.</p>
-            {% else %}
-                <div class="d-flex justify-content-center py-4">
-                    <div class="spinner-grow text-primary spinner-grow-sm" role="status"></div>
-                </div>
-            {% endif %}
-        </div>
-        
-        <!-- AI Summary & Actions -->
-        <div class="glass-card mb-4" style="border-color: rgba(245, 158, 11, 0.2);">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-warning mb-0 d-flex align-items-center gap-2"><i data-lucide="cpu" class="icon-yellow pulse-ring" style="width:18px; box-shadow:none;"></i> AI Summary & Actions</h6>
-                {% if minutes.status == 'READY' %}
-                    <span class="badge bg-success bg-opacity-25 text-success border border-success">Ready</span>
-                {% elif minutes.status == 'GENERATING' %}
-                    <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Generating...</span>
-                {% endif %}
-            </div>
-            
-            <div id="aiSummarySection">
-                {% if minutes.status == 'READY' and minutes.ai_summary %}
-                    <p class="text-secondary small">{{ minutes.ai_summary }}</p>
-                    
-                    {% if minutes.decisions %}
-                    <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
-                        <h6 class="text-warning small mb-2"><i data-lucide="check-square" style="width:14px;"></i> Key Decisions</h6>
-                        <ul class="text-white small mb-0 ps-3">
-                            {% for d in minutes.decisions %}
-                            <li>{{ d }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
-                    
-                    {% if minutes.action_items_raw %}
-                    <div class="mt-3 p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
-                        <h6 class="text-warning small mb-2"><i data-lucide="list-todo" style="width:14px;"></i> Action Items</h6>
-                        <ul class="text-white small mb-0 ps-3">
-                            {% for task in minutes.action_items_raw %}
-                            <li><strong>{{ task.assignee }}:</strong> {{ task.task }} <span class="badge bg-danger bg-opacity-25 text-danger ms-1" style="font-size: 0.6rem;">{{ task.priority }}</span></li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
-                    
-                {% elif minutes.status == 'PROCESSING' or minutes.status == 'GENERATING' %}
-                    <div class="d-flex flex-column align-items-center justify-content-center py-4">
-                        <i data-lucide="loader" class="text-warning spin-animation mb-3" style="width: 32px; height: 32px;"></i>
-                        <p class="text-secondary small text-center m-0">Processing data...</p>
-                    </div>
-                {% else %}
-                    <p class="text-secondary small text-center py-3 m-0">Upload audio to automatically generate summaries and action items.</p>
-                {% endif %}
-            </div>
-        </div>
-        
-        <!-- Live Processing Logs -->
-        <div class="glass-card h-100">
-            <h6 class="text-white mb-3 d-flex align-items-center gap-2"><i data-lucide="terminal" class="icon-green"></i> System Logs</h6>
-            <div class="timeline mt-3" id="timelineContainer" style="border-left: 2px solid var(--glass-border); padding-left: 15px; margin-left: 10px; max-height: 250px; overflow-y: auto;">
-                {% if minutes and minutes.processing_logs %}
-                    {% for log in minutes.processing_logs %}
-                    <div class="mb-3 position-relative">
-                        <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
-                        <strong class="text-white d-block small">{{ log.message }}</strong>
-                        <small class="text-secondary" style="font-size: 0.65rem;">{{ log.timestamp|slice:"11:19" }}</small>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="mb-3 position-relative">
-                        <small class="text-secondary">System is standing by.</small>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+<div id="momContentArea">
+    {% include "mom_content.html" %}
 </div>
 {% endif %}
 {% endblock %}
 
 {% block extra_js %}
+
 <script>
+    let pollInterval = null;
+
     function handleFileSelect(input) {
         if(input.files && input.files[0]) {
             let file = input.files[0];
-            document.getElementById('selectedFileName').textContent = file.name;
-            document.getElementById('selectedFileName').classList.remove('d-none');
-            document.getElementById('startUploadBtn').classList.remove('d-none');
+            let nameElem = document.getElementById('selectedFileName');
+            let btnElem = document.getElementById('startUploadBtn');
+            if(nameElem && btnElem) {
+                nameElem.textContent = file.name;
+                nameElem.classList.remove('d-none');
+                btnElem.classList.remove('d-none');
+            }
         }
+    }
+
+    function fetchMomContent() {
+        {% if selected_meeting %}
+        fetch("{% url 'mom_content_partial' selected_meeting.id %}")
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('momContentArea').innerHTML = html;
+            lucide.createIcons();
+            startStatusPolling(); // Check if we need to poll
+        })
+        .catch(error => console.error('Error fetching content:', error));
+        {% endif %}
     }
 
     function startUpload() {
@@ -260,7 +133,7 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                window.location.reload();
+                fetchMomContent();
             } else {
                 alert("Upload failed: " + data.message);
                 btn.innerHTML = 'Process Audio';
@@ -275,10 +148,73 @@
         });
     }
 
+    function copyTranscript() {
+        let container = document.getElementById('transcriptContainer');
+        if(!container) return;
+        
+        let textToCopy = "";
+        let segments = container.getElementsByClassName('transcript-segment');
+        for (let i = 0; i < segments.length; i++) {
+            let textElement = segments[i].getElementsByClassName('transcript-text')[0];
+            let speakerElement = segments[i].getElementsByClassName('speaker-name')[0];
+            textToCopy += (speakerElement.textContent || speakerElement.innerText).trim() + ":\\n";
+            textToCopy += (textElement.textContent || textElement.innerText).trim() + "\\n\\n";
+        }
+        
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert("Transcript copied to clipboard!");
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert("Failed to copy transcript.");
+        });
+    }
+
+    function startPasteProcessing() {
+        let textInput = document.getElementById('pasteTextInput').value;
+        if(!textInput.trim()) {
+            alert("Please paste some text first.");
+            return;
+        }
+        
+        let btn = document.getElementById('startPasteBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        btn.disabled = true;
+        
+        let formData = new FormData();
+        formData.append('transcript_text', textInput);
+        
+        let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch("{% if selected_meeting %}{% url 'paste_transcript_text' selected_meeting.id %}{% endif %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                fetchMomContent();
+            } else {
+                alert("Processing failed: " + data.message);
+                btn.innerHTML = 'Process Text';
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred during processing.");
+            btn.innerHTML = 'Process Text';
+            btn.disabled = false;
+        });
+    }
+
     function filterTranscript() {
         let input = document.getElementById('searchInput');
         let filter = input.value.toUpperCase();
         let container = document.getElementById('transcriptContainer');
+        if(!container) return;
         let segments = container.getElementsByClassName('transcript-segment');
 
         for (let i = 0; i < segments.length; i++) {
@@ -293,43 +229,62 @@
         }
     }
 
-    // Polling logic for background processing
-    {% if minutes and minutes.status in 'PROCESSING,GENERATING' %}
-    let pollInterval = setInterval(() => {
-        fetch("{% url 'check_transcription_status' selected_meeting.id %}")
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                if(data.state === 'READY' || data.state === 'PENDING') {
-                    // It finished successfully or errored out. Reload to show UI.
-                    window.location.reload();
-                } else {
-                    // Update progress UI dynamically if needed, or just let it spin
-                    if(data.state === 'GENERATING') {
-                        document.getElementById('processingStateText').textContent = 'Generating AI Summary...';
-                        document.getElementById('progressBar').style.width = '80%';
-                    }
-                    
-                    // Update timeline
-                    let tlContainer = document.getElementById('timelineContainer');
-                    if (tlContainer && data.logs) {
-                        let logsHTML = '';
-                        data.logs.forEach(log => {
-                            let timeStr = log.timestamp.substring(11, 19);
-                            logsHTML += `
-                            <div class="mb-3 position-relative">
-                                <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
-                                <strong class="text-white d-block small">${log.message}</strong>
-                                <small class="text-secondary" style="font-size: 0.65rem;">${timeStr}</small>
-                            </div>
-                            `;
-                        });
-                        tlContainer.innerHTML = logsHTML;
+    function startStatusPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        
+        // Only poll if there's a processing state text or we know it's processing
+        let processingStateElem = document.getElementById('processingStateText');
+        if(!processingStateElem) return; // Not in processing view
+        
+        pollInterval = setInterval(() => {
+            {% if selected_meeting %}
+            fetch("{% url 'check_transcription_status' selected_meeting.id %}")
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    if(data.state === 'READY' || data.state === 'PENDING') {
+                        // Finished or errored
+                        clearInterval(pollInterval);
+                        fetchMomContent();
+                    } else {
+                        // Update progress UI dynamically if needed
+                        let stateElem = document.getElementById('processingStateText');
+                        if(stateElem && data.state === 'GENERATING') {
+                            stateElem.textContent = 'Generating AI Summary...';
+                            let bar = document.getElementById('progressBar');
+                            if(bar) bar.style.width = '80%';
+                        }
+                        
+                        // Update timeline
+                        let tlContainer = document.getElementById('timelineContainer');
+                        if (tlContainer && data.logs) {
+                            let logsHTML = '';
+                            data.logs.forEach(log => {
+                                let timeStr = log.timestamp.substring(11, 19);
+                                logsHTML += `
+                                <div class="mb-3 position-relative">
+                                    <div class="position-absolute" style="left: -21px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+                                    <strong class="text-white d-block small">${log.message}</strong>
+                                    <small class="text-secondary" style="font-size: 0.65rem;">${timeStr}</small>
+                                </div>
+                                `;
+                            });
+                            tlContainer.innerHTML = logsHTML;
+                        }
                     }
                 }
-            }
-        });
-    }, 2000);
-    {% endif %}
+            })
+            .catch(e => {
+                console.error('Polling error:', e);
+            });
+            {% endif %}
+        }, 2000);
+    }
+
+    // Start polling on initial page load if processing
+    window.addEventListener('DOMContentLoaded', () => {
+        startStatusPolling();
+    });
 </script>
+
 {% endblock %}

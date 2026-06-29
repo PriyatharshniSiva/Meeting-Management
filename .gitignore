@@ -6,3 +6,5 @@ db.sqlite3
 .DS_Store
 media/
 mom_attachments/
+mom_audio/
+test_gemini.py

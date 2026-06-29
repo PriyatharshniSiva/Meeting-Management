@@ -10,6 +10,9 @@
                 <a href="#list-profile" class="list-group-item list-group-item-action bg-transparent text-white border-secondary active" id="list-profile-list" data-bs-toggle="list" role="tab" aria-controls="list-profile" style="background: rgba(59,130,246,0.2) !important;"><i data-lucide="user" class="icon-blue me-2"></i> Profile</a>
                 <a href="#list-security" class="list-group-item list-group-item-action bg-transparent text-secondary border-secondary" id="list-security-list" data-bs-toggle="list" role="tab" aria-controls="list-security"><i data-lucide="shield" class="icon-red me-2"></i> Security</a>
                 <a href="#list-notifications" class="list-group-item list-group-item-action bg-transparent text-secondary border-secondary" id="list-notifications-list" data-bs-toggle="list" role="tab" aria-controls="list-notifications"><i data-lucide="bell" class="icon-yellow me-2"></i> Notifications</a>
+                {% if user.role == 'ADMIN' %}
+                <a href="#list-smtp" class="list-group-item list-group-item-action bg-transparent text-secondary border-secondary" id="list-smtp-list" data-bs-toggle="list" role="tab" aria-controls="list-smtp"><i data-lucide="mail" class="icon-green me-2"></i> SMTP Setup</a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -84,6 +87,45 @@
                     <button type="button" class="btn btn-gradient mt-2">Save Preferences</button>
                 </div>
             </div>
+
+            <!-- SMTP Settings Tab -->
+            {% if user.role == 'ADMIN' %}
+            <div class="tab-pane fade" id="list-smtp" role="tabpanel" aria-labelledby="list-smtp-list">
+                <div class="glass-card">
+                    <h5 class="text-white mb-4">SMTP Email Configuration</h5>
+                    <p class="text-secondary small mb-4">Configure the SMTP server used for sending meeting invites, updates, and reminders.</p>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_smtp">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label text-secondary small text-uppercase">SMTP Host</label>
+                                <input type="text" name="email_host" class="form-control glass-input" value="{{ smtp.EMAIL_HOST }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-secondary small text-uppercase">Port</label>
+                                <input type="number" name="email_port" class="form-control glass-input" value="{{ smtp.EMAIL_PORT }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small text-uppercase">Email User / Address</label>
+                            <input type="email" name="email_host_user" class="form-control glass-input" value="{{ smtp.EMAIL_HOST_USER }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small text-uppercase">Email Password / App Password</label>
+                            <input type="password" name="email_host_password" class="form-control glass-input" placeholder="Leave blank to keep current password">
+                            <small class="text-secondary">If using Gmail, use an App Password (16 characters without spaces) instead of your account password.</small>
+                        </div>
+                        <div class="form-check form-switch mb-4">
+                            <input class="form-check-input" type="checkbox" id="emailUseTls" name="email_use_tls" {% if smtp.EMAIL_USE_TLS %}checked{% endif %}>
+                            <label class="form-check-label text-white" for="emailUseTls">Use TLS (Recommended)</label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-gradient">Save SMTP Settings</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -65,7 +65,10 @@
                         <div class="dropdown-menu dropdown-menu-end p-0 glass-card mt-2 shadow-lg" aria-labelledby="notificationDropdownToggle" style="width: 360px; border-color: var(--border-color); overflow: hidden; background: var(--card-bg);">
                             <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0 text-white fw-bold d-flex align-items-center gap-2"><i data-lucide="bell" style="width:16px;"></i> Notifications</h6>
-                                <a href="{% url 'notifications' %}" class="small text-primary text-decoration-none">View All</a>
+                                <div>
+                                    <a href="#" onclick="clearAllNotifications(); return false;" class="small text-danger text-decoration-none me-3">Clear All</a>
+                                    <a href="{% url 'notifications' %}" class="small text-primary text-decoration-none">View All</a>
+                                </div>
                             </div>
                             <div id="notificationList" style="max-height: 320px; overflow-y: auto;">
                                 <div class="p-4 text-center text-secondary small">Loading...</div>
@@ -228,99 +231,7 @@
       }
     </script>
     
-    {% if global_ongoing_meeting %}
-    <!-- Global Floating Recording Indicator -->
-    <div id="globalRecordingBadge" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: rgba(239, 68, 68, 0.95); border: 1px solid #EF4444; padding: 10px 18px; border-radius: 50px; color: white; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); cursor: pointer;" onclick="window.location.href='/mom/{{ global_ongoing_meeting.id }}/'">
-        <div style="width: 10px; height: 10px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
-        Auto-Transcribing: {{ global_ongoing_meeting.title }}
-    </div>
 
-    <script>
-    let globalMediaRecorder;
-    let globalAudioChunks = [];
-    let globalMeetingId = "{{ global_ongoing_meeting.id }}";
-    let globalUsername = "{{ request.user.username|default:'Admin' }}";
-
-    window.addEventListener('DOMContentLoaded', () => {
-        function logEventToBackend(eventStr, typeStr='info') {
-            fetch('/mom/autosave/' + globalMeetingId + '/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ transcript: '', mode: 'append', log_event: eventStr, log_type: typeStr })
-            });
-        }
-
-        async function startRealAudioCapture() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                let options = {};
-                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                    options = { mimeType: 'audio/webm;codecs=opus' };
-                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-                    options = { mimeType: 'audio/webm' };
-                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                    options = { mimeType: 'audio/mp4' };
-                }
-                
-                globalMediaRecorder = new MediaRecorder(stream, options);
-                globalMediaRecorder.onstart = () => { logEventToBackend('Microphone Capture Started', 'success'); };
-                globalMediaRecorder.ondataavailable = async (event) => {
-                    if (event.data && event.data.size > 0) {
-                        let formData = new FormData();
-                        formData.append('audio_blob', event.data, 'chunk.webm');
-                        try {
-                            let box = document.getElementById('liveTranscriptBox');
-                            if (box) {
-                                let interimDiv = document.getElementById('interimDiv');
-                                if (!interimDiv) {
-                                    interimDiv = document.createElement('div');
-                                    interimDiv.id = 'interimDiv';
-                                    interimDiv.className = 'mb-3 opacity-50';
-                                    box.appendChild(interimDiv);
-                                }
-                                interimDiv.innerHTML = `
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <strong class="text-warning small"><i data-lucide="loader" class="spin-animation" style="width:12px;"></i> AI Processing Audio...</strong>
-                                    </div>
-                                `;
-                                box.scrollTop = box.scrollHeight;
-                                lucide.createIcons();
-                            }
-                            await fetch('/mom/process_audio/' + globalMeetingId + '/', {
-                                method: 'POST',
-                                body: formData
-                            });
-                            if (box) {
-                                let interimDiv = document.getElementById('interimDiv');
-                                if (interimDiv) interimDiv.remove();
-                            }
-                        } catch (e) {
-                            console.error("Error sending audio chunk:", e);
-                        }
-                    }
-                };
-                globalMediaRecorder.onerror = (event) => {
-                    logEventToBackend('Microphone Error: ' + event.error, 'error');
-                };
-                globalMediaRecorder.start();
-                setInterval(() => {
-                    if (globalMediaRecorder && globalMediaRecorder.state === 'recording') {
-                        globalMediaRecorder.stop();
-                        setTimeout(() => { try { globalMediaRecorder.start(); } catch(e){} }, 50);
-                    }
-                }, 6000);
-            } catch (err) {
-                logEventToBackend('Microphone Access Denied', 'error');
-            }
-        }
-        window.globalRecognition = {
-            start: startRealAudioCapture,
-            stop: () => { if (globalMediaRecorder) globalMediaRecorder.stop(); }
-        };
-        setTimeout(() => { startRealAudioCapture(); }, 1000);
-    });
-    </script>
-    {% endif %}
 
     {% block extra_js %}{% endblock %}
 
@@ -404,6 +315,21 @@
         }
         setInterval(fetchUnreadCount, 5000);
     });
+
+    function clearAllNotifications() {
+        fetch("/notifications/clear-all/")
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('notificationList').innerHTML = '<div class="p-4 text-center text-secondary small">No notifications.</div>';
+                    let badge = document.getElementById('notificationBadge');
+                    if(badge) {
+                        badge.textContent = '0';
+                        badge.style.display = 'none';
+                    }
+                }
+            });
+    }
     </script>
     {% endif %}
 </body>

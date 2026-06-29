@@ -166,14 +166,11 @@ def meetings_view(request):
             
         # --- START ZOOM INTEGRATION ---
         if m_type == 'ONLINE':
-            from core.zoom_api import ZoomAPI
-            start_time_iso = f"{date}T{time}Z"  # Simplified ISO string for mock
-            zoom_meeting = ZoomAPI.create_meeting(title, duration, start_time_iso)
-            meeting_link = zoom_meeting['join_url']
+            if not meeting_link:
+                # Use the official Zoom Test Meeting so users don't get a 3001 Invalid ID error in the mock environment
+                meeting_link = "https://zoom.us/test"
             
-            # We could store the zoom ID in the meeting model, but for now we'll put it in the link
-            # or append it to the description
-            desc += f"\n\n--- Zoom Meeting ID: {zoom_meeting['id']} ---"
+            desc += f"\\n\\n--- Meeting Link: {meeting_link} ---"
         # --- END ZOOM INTEGRATION ---
         
         meeting = Meeting.objects.create(
@@ -314,9 +311,11 @@ def meetings_view(request):
         try:
             m_dt_naive = datetime.datetime.combine(m.date, m.time)
             m_dt = timezone.make_aware(m_dt_naive)
+            duration_delta = datetime.timedelta(minutes=m.duration if m.duration else 30)
             
-            # Just append the meeting to the list without deleting it
-            meetings_list.append(m)
+            # Only append if the meeting hasn't ended yet
+            if m_dt + duration_delta >= now:
+                meetings_list.append(m)
         except Exception as e:
             print(f"Error calculating end_time for meeting {m.id}: {e}")
             # Fallback if datetime combine fails for any reason
@@ -593,6 +592,28 @@ def mom_view(request, meeting_id=None):
     })
 
 @login_required
+def mom_content_partial(request, meeting_id):
+    from core.models import Meeting, MeetingMinutes
+    import json
+    from django.shortcuts import get_object_or_404
+    
+    selected_meeting = get_object_or_404(Meeting, id=meeting_id)
+    minutes, _ = MeetingMinutes.objects.get_or_create(meeting=selected_meeting)
+    
+    transcript_lines = []
+    if minutes.history:
+        try:
+            transcript_lines = json.loads(minutes.history)
+        except:
+            pass
+            
+    return render(request, 'mom_content.html', {
+        'selected_meeting': selected_meeting,
+        'transcript_lines': transcript_lines,
+        'minutes': minutes
+    })
+
+@login_required
 def tasks_view(request):
     tasks = ActionItem.objects.all()
     return render(request, 'tasks.html', {'tasks': tasks})
@@ -830,7 +851,46 @@ def settings_view(request):
             else:
                 messages.error(request, "Current password is incorrect.")
                 
-    return render(request, 'settings.html')
+        elif action == 'update_smtp':
+            if request.user.role != 'ADMIN':
+                messages.error(request, "Only administrators can update SMTP settings.")
+            else:
+                import os
+                from pathlib import Path
+                env_path = Path(settings.BASE_DIR) / '.env'
+                
+                # Parse existing .env lines
+                env_dict = {}
+                if env_path.exists():
+                    with open(env_path, 'r') as f:
+                        for line in f:
+                            if '=' in line and not line.strip().startswith('#'):
+                                k, v = line.strip().split('=', 1)
+                                env_dict[k] = v
+                
+                # Update dict with new values
+                env_dict['EMAIL_HOST'] = request.POST.get('email_host', 'smtp.gmail.com')
+                env_dict['EMAIL_PORT'] = request.POST.get('email_port', '587')
+                env_dict['EMAIL_USE_TLS'] = 'True' if request.POST.get('email_use_tls') == 'on' else 'False'
+                env_dict['EMAIL_HOST_USER'] = request.POST.get('email_host_user', '')
+                if request.POST.get('email_host_password'):
+                    env_dict['EMAIL_HOST_PASSWORD'] = request.POST.get('email_host_password')
+                
+                # Write back to .env
+                with open(env_path, 'w') as f:
+                    for k, v in env_dict.items():
+                        f.write(f"{k}={v}\n")
+                        
+                messages.success(request, "SMTP settings updated in .env. You may need to restart the server for changes to take effect.")
+                
+    import os
+    smtp_context = {
+        'EMAIL_HOST': os.getenv('EMAIL_HOST', 'smtp.gmail.com'),
+        'EMAIL_PORT': os.getenv('EMAIL_PORT', '587'),
+        'EMAIL_USE_TLS': str(os.getenv('EMAIL_USE_TLS', 'True')).lower() in ['true', '1'],
+        'EMAIL_HOST_USER': os.getenv('EMAIL_HOST_USER', ''),
+    }
+    return render(request, 'settings.html', {'smtp': smtp_context})
 
 @login_required
 def projects_view(request):
@@ -1479,124 +1539,7 @@ def autosave_transcript(request, meeting_id):
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'invalid method'})
 
-@csrf_exempt
-@login_required
-def process_audio(request, meeting_id):
-    from core.models import Meeting, MeetingMinutes
-    import json
-    import os
-    import tempfile
-    import speech_recognition as sr
-    from pydub import AudioSegment
-    import datetime
-    from django.utils import timezone
-    
-    if request.method == 'POST' and request.FILES.get('audio_blob'):
-        meeting = Meeting.objects.get(id=meeting_id)
-        minutes, created = MeetingMinutes.objects.get_or_create(meeting=meeting, defaults={'notes': 'Autosaved transcript'})
-        
-        # Log: Audio Received
-        log_entry_recv = {
-            'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            'event': 'Audio Chunk Received (Processing server-side)',
-            'type': 'info'
-        }
-        current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
-        current_logs.append(log_entry_recv)
-        minutes.processing_logs = current_logs
-        minutes.save()
-        
-        try:
-            audio_blob = request.FILES['audio_blob']
-            
-            # Save raw blob to temp webm file
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_webm:
-                for chunk in audio_blob.chunks():
-                    temp_webm.write(chunk)
-                temp_webm_path = temp_webm.name
-                
-            # Log: Audio Processing
-            log_entry_proc = {
-                'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                'event': 'Converting format and extracting speech...',
-                'type': 'warning'
-            }
-            current_logs.append(log_entry_proc)
-            minutes.processing_logs = current_logs
-            minutes.save()
 
-            # Convert to WAV using pydub
-            wav_path = temp_webm_path.replace('.webm', '.wav')
-            audio = AudioSegment.from_file(temp_webm_path, format="webm")
-            audio.export(wav_path, format="wav")
-            
-            # Use SpeechRecognition
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_path) as source:
-                audio_data = recognizer.record(source)
-                
-            try:
-                # Use Google Speech Recognition (free, no API key required)
-                text = recognizer.recognize_google(audio_data)
-                
-                if text.strip():
-                    # Parse into history
-                    parsed_lines = [{'speaker': request.user.username, 'text': text.strip()}]
-                    
-                    existing_history = []
-                    if minutes.history:
-                        try:
-                            existing_history = json.loads(minutes.history)
-                        except:
-                            pass
-                    existing_history.extend(parsed_lines)
-                    minutes.history = json.dumps(existing_history)
-                    
-                    # Log: Transcript Generated & Saved
-                    log_entry_success = {
-                        'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                        'event': f'Transcript Saved: "{text[:30]}..."',
-                        'type': 'success'
-                    }
-                    current_logs.append(log_entry_success)
-                    minutes.processing_logs = current_logs
-                    minutes.save()
-                    
-            except sr.UnknownValueError:
-                # Speech was unintelligible or empty, ignore silently
-                pass
-            except sr.RequestError as e:
-                # Log API error
-                log_entry_error = {
-                    'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                    'event': f'Transcription Error: {e}',
-                    'type': 'error'
-                }
-                current_logs.append(log_entry_error)
-                minutes.processing_logs = current_logs
-                minutes.save()
-                
-            # Cleanup temp files
-            if os.path.exists(temp_webm_path):
-                os.remove(temp_webm_path)
-            if os.path.exists(wav_path):
-                os.remove(wav_path)
-                
-            return JsonResponse({'status': 'success'})
-        except Exception as e:
-            # Log critical error
-            log_entry_error = {
-                'timestamp': timezone.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                'event': f'Audio Processing Error: {str(e)}',
-                'type': 'error'
-            }
-            current_logs = minutes.processing_logs if isinstance(minutes.processing_logs, list) else []
-            current_logs.append(log_entry_error)
-            minutes.processing_logs = current_logs
-            minutes.save()
-            return JsonResponse({'status': 'error', 'message': str(e)})
-
-    return JsonResponse({'status': 'invalid request'})
 
 @login_required
 def latest_transcript(request, meeting_id):
@@ -1671,6 +1614,13 @@ def mark_notification_read(request, notification_id):
         return JsonResponse({'status': 'success'})
     except InAppNotification.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Notification not found'})
+
+@login_required
+def clear_all_notifications(request):
+    from django.http import JsonResponse
+    from core.models import InAppNotification
+    InAppNotification.objects.filter(user=request.user).delete()
+    return JsonResponse({'status': 'success'})
 
 @csrf_exempt
 def zoom_webhook(request):
@@ -1882,6 +1832,7 @@ def upload_audio_for_transcription(request, meeting_id):
     from core.models import Meeting, MeetingMinutes
     from django.http import JsonResponse
     from core.ai_processor import start_ai_processing
+    from django.utils import timezone
     import json
     
     if request.method == 'POST':
@@ -1894,7 +1845,7 @@ def upload_audio_for_transcription(request, meeting_id):
                 
             minutes, _ = MeetingMinutes.objects.get_or_create(meeting=meeting)
             minutes.audio_file = audio_file
-            minutes.status = 'PENDING'
+            minutes.status = 'PROCESSING'
             minutes.history = ''
             minutes.speaker_metrics = {}
             minutes.ai_summary = ''
@@ -1905,6 +1856,44 @@ def upload_audio_for_transcription(request, meeting_id):
             
             # Start background processing
             start_ai_processing(minutes.id)
+            
+            return JsonResponse({'status': 'success', 'message': 'Upload successful. Processing started.'})
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def paste_transcript_text(request, meeting_id):
+    from core.models import Meeting, MeetingMinutes
+    from django.http import JsonResponse
+    from core.ai_processor import start_ai_text_processing
+    from django.utils import timezone
+    
+    if request.method == 'POST':
+        try:
+            meeting = Meeting.objects.get(id=meeting_id)
+            transcript_text = request.POST.get('transcript_text')
+            
+            if not transcript_text or not transcript_text.strip():
+                return JsonResponse({'status': 'error', 'message': 'No text provided'})
+                
+            minutes, _ = MeetingMinutes.objects.get_or_create(meeting=meeting)
+            
+            # Store the raw text in notes temporarily so the background worker can pick it up
+            minutes.notes = transcript_text
+            minutes.status = 'PROCESSING'
+            minutes.history = ''
+            minutes.speaker_metrics = {}
+            minutes.ai_summary = ''
+            minutes.decisions = []
+            minutes.action_items_raw = []
+            minutes.processing_logs = [{'timestamp': timezone.now().isoformat(), 'message': 'Text transcript received. Enqueued for processing.'}]
+            minutes.save()
+            
+            # Start background processing
+            start_ai_text_processing(minutes.id)
             
             return JsonResponse({'status': 'success', 'message': 'Upload successful. Processing started.'})
             
