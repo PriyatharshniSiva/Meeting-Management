@@ -575,6 +575,15 @@ def mom_view(request, meeting_id=None):
         if minutes.history:
             try:
                 transcript_lines = json.loads(minutes.history)
+                speaker_colors = {}
+                colors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#6366f1']
+                c_idx = 0
+                for line in transcript_lines:
+                    spk = line.get('speaker', 'Unknown')
+                    if spk not in speaker_colors:
+                        speaker_colors[spk] = colors[c_idx % len(colors)]
+                        c_idx += 1
+                    line['color'] = speaker_colors[spk]
             except:
                 transcript_lines = []
         else:
@@ -604,6 +613,15 @@ def mom_content_partial(request, meeting_id):
     if minutes.history:
         try:
             transcript_lines = json.loads(minutes.history)
+            speaker_colors = {}
+            colors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#6366f1']
+            c_idx = 0
+            for line in transcript_lines:
+                spk = line.get('speaker', 'Unknown')
+                if spk not in speaker_colors:
+                    speaker_colors[spk] = colors[c_idx % len(colors)]
+                    c_idx += 1
+                line['color'] = speaker_colors[spk]
         except:
             pass
             
@@ -720,16 +738,28 @@ def rsvp_email_view(request, meeting_id):
         
         # Prevent duplicate responses
         if participant.rsvp_status != 'PENDING':
+            status_text = participant.get_rsvp_status_display()
             html = f"""
             <!DOCTYPE html>
             <html>
-                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
-                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-                        <h2 style='color: #4b5563; font-size: 24px; margin-top: 0;'>Already Responded</h2>
-                        <p style='color: #4b5563; font-size: 16px;'>You have already responded to this invitation as <strong>{participant.get_rsvp_status_display()}</strong>.</p>
-                        <p style='color: #9ca3af; font-size: 14px;'>No further action is required.</p>
-                    </div>
-                </body>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {{
+                            Swal.fire({{
+                                title: 'Already Responded',
+                                text: 'You have already {status_text.lower()} this invitation.',
+                                icon: 'info',
+                                confirmButtonText: 'Close',
+                                confirmButtonColor: '#4f46e5'
+                            }}).then(() => {{
+                                window.location.href = '/meetings/';
+                            }});
+                        }});
+                    </script>
+                </head>
+                <body style='background-color: #f3f4f6;'></body>
             </html>
             """
             return HttpResponse(html)
@@ -777,31 +807,55 @@ def rsvp_email_view(request, meeting_id):
                     participant.save()
                     return redirect(m.meeting_link)
             
+            redirect_url = m.meeting_link if m.meeting_link else '/meetings/'
             html = f"""
             <!DOCTYPE html>
             <html>
-                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
-                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 6px solid #10b981;'>
-                        <div style='font-size: 54px; margin-bottom: 20px;'>✅</div>
-                        <h2 style='color: #111827; margin-top: 0; font-size: 28px;'>Status: Accepted</h2>
-                        <p style='color: #4b5563; font-size: 16px; line-height: 1.5;'>You have successfully <strong>accepted</strong> the invitation for <br><strong>{participant.meeting.title}</strong>.</p>
-                        <p style='color: #9ca3af; font-size: 14px; margin-top: 30px;'>You may now close this window.</p>
-                    </div>
-                </body>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {{
+                            Swal.fire({{
+                                title: 'Accepted!',
+                                html: 'You have successfully accepted the invitation for <strong>{participant.meeting.title}</strong>.<br><br><b>Organizer:</b> {participant.meeting.created_by.username}<br><b>Time:</b> {participant.meeting.date} at {participant.meeting.time}',
+                                icon: 'success',
+                                confirmButtonText: 'Join / Continue',
+                                confirmButtonColor: '#10b981',
+                                timer: 4000,
+                                timerProgressBar: true
+                            }}).then(() => {{
+                                window.location.href = "{redirect_url}";
+                            }});
+                        }});
+                    </script>
+                </head>
+                <body style='background-color: #f3f4f6;'></body>
             </html>
             """
         else:
             html = f"""
             <!DOCTYPE html>
             <html>
-                <body style='font-family:"Helvetica Neue", Arial, sans-serif; text-align:center; margin: 0; padding: 50px 20px; background-color: #f3f4f6;'>
-                    <div style='max-width: 500px; margin: 0 auto; background: white; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 6px solid #ef4444;'>
-                        <div style='font-size: 54px; margin-bottom: 20px;'>❌</div>
-                        <h2 style='color: #111827; margin-top: 0; font-size: 28px;'>Status: Declined</h2>
-                        <p style='color: #4b5563; font-size: 16px; line-height: 1.5;'>You have <strong>declined</strong> the invitation for <br><strong>{participant.meeting.title}</strong>.</p>
-                        <p style='color: #9ca3af; font-size: 14px; margin-top: 30px;'>You may now close this window.</p>
-                    </div>
-                </body>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {{
+                            Swal.fire({{
+                                title: 'Declined',
+                                text: 'You have declined the invitation for {participant.meeting.title}.',
+                                icon: 'error',
+                                confirmButtonText: 'Close',
+                                confirmButtonColor: '#ef4444'
+                            }}).then(() => {{
+                                window.close();
+                                window.location.href = '/meetings/';
+                            }});
+                        }});
+                    </script>
+                </head>
+                <body style='background-color: #f3f4f6;'></body>
             </html>
             """
             
@@ -964,6 +1018,7 @@ def projects_view(request):
         team_size = request.POST.get('team_size')
         deadline = request.POST.get('deadline')
         priority = request.POST.get('priority', 'MEDIUM')
+        assigned_user_ids = request.POST.getlist('assigned_users')
         
         try:
             team_size = int(team_size)
@@ -978,7 +1033,7 @@ def projects_view(request):
             )
             
             # Find eligible employees (TL and EMPLOYEE)
-            eligible_users = CustomUser.objects.filter(role__in=['EMPLOYEE', 'TL'])
+            eligible_users = CustomUser.objects.filter(id__in=assigned_user_ids, role__in=['EMPLOYEE', 'TL'])
             
             logs = []
             notifications = []
@@ -1032,12 +1087,45 @@ Decline Project: {decline_url}
             declined_count=Count('assignment_logs', filter=Q(assignment_logs__status='DECLINED'))
         ).order_by('-created_at')
         context['admin_projects'] = projects
+        context['eligible_users'] = CustomUser.objects.filter(role__in=['EMPLOYEE', 'TL']).order_by('username')
     else:
         # Employees see projects they are invited to or accepted
         logs = ProjectAssignmentLog.objects.filter(user=request.user).select_related('project').order_by('-project__created_at')
         context['user_logs'] = logs
 
     return render(request, 'projects.html', context)
+
+@login_required
+def edit_project(request, project_id):
+    from core.models import Project
+    if request.method == 'POST' and request.user.role == 'ADMIN':
+        try:
+            project = Project.objects.get(id=project_id, created_by=request.user)
+            project.name = request.POST.get('name')
+            project.description = request.POST.get('description')
+            project.required_skills = request.POST.get('skills')
+            project.required_team_size = int(request.POST.get('team_size'))
+            project.deadline = request.POST.get('deadline')
+            project.priority = request.POST.get('priority', 'MEDIUM')
+            project.save()
+            messages.success(request, "Project updated successfully.")
+        except Project.DoesNotExist:
+            messages.error(request, "Project not found or permission denied.")
+        except Exception as e:
+            messages.error(request, f"Error updating project: {str(e)}")
+    return redirect('projects')
+
+@login_required
+def delete_project(request, project_id):
+    from core.models import Project
+    if request.method == 'POST' and request.user.role == 'ADMIN':
+        try:
+            project = Project.objects.get(id=project_id, created_by=request.user)
+            project.delete()
+            messages.success(request, "Project deleted successfully.")
+        except Project.DoesNotExist:
+            messages.error(request, "Project not found or permission denied.")
+    return redirect('projects')
 
 @login_required
 def accept_project(request, project_id):
@@ -2070,19 +2158,33 @@ def export_transcript(request, meeting_id, format):
 
 @login_required
 def retry_transcription_view(request, meeting_id):
-    from core.models import MeetingMinutes
-    from django.shortcuts import get_object_or_404, redirect
-    from core.ai_processor import start_ai_processing
+    from core.models import Meeting, MeetingMinutes
+    from django.shortcuts import redirect
+    from django.contrib import messages
+    from core.ai_processor import start_ai_processing, start_ai_text_processing
     import django.utils.timezone as timezone
     
     if request.method == 'POST':
-        minutes = get_object_or_404(MeetingMinutes, meeting__id=meeting_id)
+        meeting = Meeting.objects.filter(id=meeting_id).first()
+        if not meeting:
+            messages.error(request, "Meeting not found.")
+            return redirect('meetings')
+            
+        minutes, created = MeetingMinutes.objects.get_or_create(meeting=meeting)
+        
+        if not minutes.audio_file and not minutes.notes:
+            messages.error(request, "No transcript found for this meeting. Please upload an audio file first.")
+            return redirect('mom_detail', meeting_id=meeting_id)
+            
         minutes.status = 'PENDING'
         minutes.processing_logs = [{'timestamp': timezone.now().isoformat(), 'message': 'Retrying AI processing...'}]
         minutes.save()
         
-        start_ai_processing(minutes.id)
-        
+        if minutes.audio_file:
+            start_ai_processing(minutes.id)
+        elif minutes.notes:
+            start_ai_text_processing(minutes.id)
+            
     return redirect('mom_detail', meeting_id=meeting_id)
 
 @login_required

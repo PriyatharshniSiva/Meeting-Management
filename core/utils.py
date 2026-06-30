@@ -32,8 +32,8 @@ def send_meeting_invites(meeting, participants):
     if not participants:
         return
         
-    ics_data = generate_ics(meeting)
-    
+        
+
     for participant in participants:
         is_external = not participant.user
         recipient_email = participant.external_email if is_external else participant.user.email
@@ -103,9 +103,9 @@ def send_meeting_invites(meeting, participants):
                         <h2 style="font-size: 20px; font-weight: 600; color: #111827; margin-top: 0; margin-bottom: 20px;">Action Required</h2>
                         <p style="font-size: 15px; color: #4b5563; margin-bottom: 25px;">Please confirm your attendance by clicking one of the buttons below:</p>
                         
-                        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                            <a href="{accept_link}" style="display: inline-block; padding: 14px 28px; background-color: #10b981; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">✅ Accept Invitation</a>
-                            <a href="{decline_link}" style="display: inline-block; padding: 14px 28px; background-color: #ef4444; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);">❌ Decline Invitation</a>
+                        <div style="text-align: center;">
+                            <a href="{accept_link}" style="display: inline-block; margin: 10px 15px; padding: 16px 32px; background-color: #10b981; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 8px; min-width: 200px; text-align: center; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">✅ Accept Invitation</a>
+                            <a href="{decline_link}" style="display: inline-block; margin: 10px 15px; padding: 16px 32px; background-color: #ef4444; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 8px; min-width: 200px; text-align: center; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);">❌ Decline Invitation</a>
                         </div>
                     </div>
                     
@@ -121,7 +121,6 @@ def send_meeting_invites(meeting, participants):
         
         msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [recipient_email])
         msg.attach_alternative(html_content, "text/html")
-        msg.attach('invite.ics', ics_data, 'text/calendar')
         
         if meeting.attachment:
             import mimetypes

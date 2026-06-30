@@ -23,14 +23,16 @@ def run_ai_transcription(minutes_id):
         
         minutes.status = 'PROCESSING'
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Audio uploaded successfully. Starting AI processing...'})
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         load_dotenv(os.path.join(settings.BASE_DIR, '.env'), override=True)
         api_key = os.getenv("GEMINI_API_KEY", "")
         
-        if not api_key or api_key == "your_gemini_api_key_here":
+        if not api_key:
             raise Exception("API_KEY_MISSING")
             
+        print(f"Loaded API key for transcription. Starts with: {api_key[:3]}...", flush=True)
         genai.configure(api_key=api_key)
         
         # Determine participants
@@ -46,6 +48,7 @@ def run_ai_transcription(minutes_id):
         audio_file_path = minutes.audio_file.path
         
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Loading and splitting audio file...'})
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         # Load and chunk audio
@@ -53,12 +56,15 @@ def run_ai_transcription(minutes_id):
         chunk_length_ms = 15 * 60 * 1000 # 15 minutes
         chunks = [audio[i:i + chunk_length_ms] for i in range(0, len(audio), chunk_length_ms)]
         
-        transcription_model = genai.GenerativeModel('gemini-1.5-flash')
+        print("Initializing Gemini API...", flush=True)
+        transcription_model = genai.GenerativeModel('gemini-2.5-flash')
         all_transcript_data = []
         uploaded_files = []
+        known_speakers_so_far = set()
         
         for idx, chunk in enumerate(chunks):
             minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f'Transcribing Part {idx+1}/{len(chunks)}...'})
+            minutes.processing_logs = list(minutes.processing_logs)
             minutes.save()
             
             chunk_file_path = f"{audio_file_path}_chunk_{idx}.mp3"
@@ -75,12 +81,22 @@ def run_ai_transcription(minutes_id):
             if uploaded_file.state.name == "FAILED":
                 raise Exception("Audio file processing failed on Gemini servers.")
                 
+            known_speakers_str = ", ".join(known_speakers_so_far) if known_speakers_so_far else "None yet"
+                
             prompt = f"""
-            You are an expert audio transcriber. Listen to this audio and provide a complete, verbatim transcript.
+            You are an expert audio transcriber. Listen to this audio and provide a complete, verbatim transcript with strict speaker diarization.
             Format the transcript EXACTLY as a valid JSON array of objects with no markdown block formatting (do not wrap in ```json).
+            
+            CRITICAL RULES FOR SPEAKERS:
+            1. You MUST distinctly separate when different people are talking. 
+            2. You MUST recognize voices consistently. If Speaker 1 speaks, then Speaker 2 speaks, and then the first person speaks again, you MUST label it "Speaker 1". Do not invent a new speaker if it's the same voice.
+            3. Group continuous speech by the same speaker into a single JSON object.
+            4. Do NOT deduce or use actual names or random names. You MUST ALWAYS strictly use generic numeric labels exactly as: "Speaker 1", "Speaker 2", "Speaker 3", etc.
+            5. Speakers identified in previous parts of this recording: {known_speakers_str}. You MUST reuse these exact numeric labels if the voices match previously identified speakers.
+            
             Each object must have:
             - "timestamp": "[MM:SS]" representing the approximate time of the speech relative to this chunk.
-            - "speaker": The name of the speaker. Try to identify speakers based on context, or use generic names like "Speaker 1", "Speaker 2". The known participants are: {participant_names}.
+            - "speaker": The consistent name of the speaker.
             - "text": The exact words spoken.
             
             Ensure the JSON is perfectly valid. Do not omit any spoken words.
@@ -110,6 +126,12 @@ def run_ai_transcription(minutes_id):
                         pass
                         
             all_transcript_data.extend(chunk_data)
+            
+            # Update known speakers for next chunks
+            for entry in chunk_data:
+                spk = entry.get('speaker', '').strip()
+                if spk and spk.lower() != 'unknown':
+                    known_speakers_so_far.add(spk)
             
             # Clean up local chunk file
             if os.path.exists(chunk_file_path):
@@ -142,6 +164,7 @@ def run_ai_transcription(minutes_id):
         
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Merging Transcript...'})
         minutes.status = 'GENERATING'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         # Generate AI Summary
@@ -162,6 +185,7 @@ def run_ai_transcription(minutes_id):
         """
         
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Generating AI Summary...'})
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         sum_response = transcription_model.generate_content(summary_prompt)
@@ -208,26 +232,29 @@ def run_ai_transcription(minutes_id):
             
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Completed'})
         minutes.status = 'READY'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
             
     except google_exceptions.GoogleAPIError as api_err:
         minutes = MeetingMinutes.objects.get(id=minutes_id)
         # Log real error securely in backend
-        print(f"[BACKEND ERROR] Gemini API Error during transcription: {str(api_err)}")
+        print(f"[BACKEND ERROR] Gemini API Error during transcription: {str(api_err)}", flush=True)
         minutes.status = 'FAILED'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.processing_logs.append({
             'timestamp': timezone.now().isoformat(), 
-            'message': 'Transcription service is currently unavailable. Please try again later.'
+            'message': f'API Error: {str(api_err)}'
         })
         minutes.save()
     except Exception as e:
         minutes = MeetingMinutes.objects.get(id=minutes_id)
         # Catch API_KEY_MISSING and others
-        print(f"[BACKEND ERROR] Exception during transcription: {str(e)}")
+        print(f"[BACKEND ERROR] Exception during transcription: {str(e)}", flush=True)
         minutes.status = 'FAILED'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.processing_logs.append({
             'timestamp': timezone.now().isoformat(), 
-            'message': 'Transcription service is currently unavailable. Please try again later.'
+            'message': f'Error: {str(e)}'
         })
         minutes.save()
 
@@ -247,6 +274,7 @@ def run_ai_text_processing(minutes_id):
         
         minutes.status = 'PROCESSING'
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Processing pasted text transcript...'})
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         from dotenv import load_dotenv
@@ -256,15 +284,17 @@ def run_ai_text_processing(minutes_id):
         api_key = os.getenv("GEMINI_API_KEY", "")
         
         # Determine if we can use Gemini
-        can_use_gemini = bool(api_key and api_key != "your_gemini_api_key_here" and not api_key.startswith("AQ."))
+        can_use_gemini = bool(api_key)
         
         if can_use_gemini:
             import google.generativeai as genai
+            print(f"Loaded API key for text processing. Starts with: {api_key[:3]}...", flush=True)
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             # 1. Structure the raw text
             minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Structuring text into JSON format using AI...'})
+            minutes.processing_logs = list(minutes.processing_logs)
             minutes.save()
             
             structure_prompt = f"""
@@ -293,6 +323,7 @@ def run_ai_text_processing(minutes_id):
         
         if not can_use_gemini:
             minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'API Key invalid/missing. Using raw text format...'})
+            minutes.processing_logs = list(minutes.processing_logs)
             minutes.save()
             transcript_data = [{"timestamp": "[00:00]", "speaker": "Speaker", "text": raw_text}]
             
@@ -316,6 +347,7 @@ def run_ai_text_processing(minutes_id):
         
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Text structuring completed. Generating AI summaries...'})
         minutes.status = 'GENERATING'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
         
         # 2. Generating AI Summary
@@ -391,6 +423,7 @@ def run_ai_text_processing(minutes_id):
             minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': 'Skipped AI Summary due to missing/invalid API key.'})
             
         minutes.status = 'READY'
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
             
     except Exception as e:
@@ -399,6 +432,7 @@ def run_ai_text_processing(minutes_id):
         
         minutes.status = 'NO_TRANSCRIPT'
         minutes.processing_logs.append({'timestamp': timezone.now().isoformat(), 'message': f'Error processing text: {error_msg}'})
+        minutes.processing_logs = list(minutes.processing_logs)
         minutes.save()
 
 def start_ai_text_processing(minutes_id):
