@@ -4,9 +4,9 @@
 
 {% block content %}
 <!-- Hero Welcome Banner (Ultra Premium Violet Gradient) -->
-<div class="mb-4 page-transition" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, #10B981 0%, #047857 100%); box-shadow: 0 8px 30px rgba(16, 185, 129, 0.3); display: flex; position: relative;">
+<div class="mb-4 page-transition" style="border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); box-shadow: 0 8px 30px rgba(124, 58, 237, 0.25); display: flex; position: relative;">
     <div style="flex: 1.5; padding: 36px 40px; color: white;">
-        <span class="badge bg-white text-dark mb-2 fw-semibold px-3 py-2" style="border-radius: 20px; font-size: 0.8rem; color: #047857 !important;">ENTERPRISE WORKSPACE</span>
+        <span class="badge bg-white text-dark mb-2 fw-semibold px-3 py-2" style="border-radius: 20px; font-size: 0.8rem; color: var(--primary) !important;">ENTERPRISE WORKSPACE</span>
         <h2 class="fw-bold mb-2 text-white" style="font-size: 2.2rem; letter-spacing: -0.5px;">Welcome back, {{ user.username|default:"User"|title }}!</h2>
         <p style="font-size: 1rem; opacity: 0.95; margin-bottom: 0;">Accessing your Premium Meeting & Action Item Intelligence Hub.</p>
     </div>

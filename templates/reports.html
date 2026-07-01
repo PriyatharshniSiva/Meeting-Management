@@ -5,21 +5,21 @@
 {% block content %}
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="glass-card text-center" style="border-color: rgba(59, 130, 246, 0.3);">
+        <div class="glass-card text-center" style="border-color: rgba(124, 58, 237, 0.3);">
             <i data-lucide="bar-chart-2" class="icon-blue mb-2" style="width:32px; height:32px;"></i>
             <h6 class="text-white">Attendance Report</h6>
             <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Attendance_Report', 'pdf')">Export PDF</button>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="glass-card text-center" style="border-color: rgba(16, 185, 129, 0.3);">
+        <div class="glass-card text-center" style="border-color: rgba(168, 85, 247, 0.3);">
             <i data-lucide="pie-chart" class="icon-purple mb-2" style="width:32px; height:32px;"></i>
             <h6 class="text-white">Participation Report</h6>
             <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Participation_Report', 'xlsx')">Export Excel</button>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="glass-card text-center" style="border-color: rgba(34, 197, 94, 0.3);">
+        <div class="glass-card text-center" style="border-color: rgba(16, 185, 129, 0.3);">
             <i data-lucide="check-square" class="icon-green mb-2" style="width:32px; height:32px;"></i>
             <h6 class="text-white">Task Completion</h6>
             <button class="btn btn-sm btn-outline-primary mt-2" onclick="downloadReport('Task_Completion', 'csv')">Export CSV</button>
@@ -56,10 +56,20 @@
                     </td>
                     <td class="border-bottom py-3 text-secondary">{{ m.date }} {{ m.time }}</td>
                     <td class="border-bottom py-3 text-end pe-3">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'export_pdf' m.id %}" class="btn btn-outline-primary" title="Export PDF"><i data-lucide="file-text" style="width:14px;"></i> PDF</a>
-                            <a href="{% url 'export_docx' m.id %}" class="btn btn-outline-primary" title="Export Word"><i data-lucide="file" style="width:14px;"></i> DOCX</a>
-                            <a href="{% url 'export_txt' m.id %}" class="btn btn-outline-primary" title="Export Text"><i data-lucide="align-left" style="width:14px;"></i> TXT</a>
+                        <div class="d-flex align-items-center justify-content-end gap-2">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'export_pdf' m.id %}" class="btn btn-outline-primary" title="Export PDF"><i data-lucide="file-text" style="width:14px;"></i> PDF</a>
+                                <a href="{% url 'export_docx' m.id %}" class="btn btn-outline-primary" title="Export Word"><i data-lucide="file" style="width:14px;"></i> DOCX</a>
+                                <a href="{% url 'export_txt' m.id %}" class="btn btn-outline-primary" title="Export Text"><i data-lucide="align-left" style="width:14px;"></i> TXT</a>
+                            </div>
+                            {% if user.role == 'ADMIN' %}
+                            <form method="POST" action="{% url 'delete_meeting' m.id %}" class="m-0 p-0 delete-confirm" data-confirm-msg="Are you sure you want to delete this meeting and its reports?">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center" title="Delete Meeting" style="border-radius: 20px; width: 30px; height: 30px; padding: 0;">
+                                    <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

@@ -24,7 +24,7 @@
     
     <!-- Theme Initializer -->
     <script>
-        const savedTheme = localStorage.getItem('theme') || 'dark';
+        const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
 </head>
@@ -189,7 +189,7 @@
       const themeIconDarkWrapper = document.getElementById('themeIconDarkWrapper');
       
       if (themeToggleBtn) {
-          const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+          const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
           if (currentTheme === 'light') {
               themeIconDarkWrapper.classList.remove('d-none');
               themeIconLightWrapper.classList.add('d-none');
@@ -338,6 +338,7 @@
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const message = this.getAttribute('data-confirm-msg') || 'Are you sure you want to delete this?';
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 Swal.fire({
                     title: 'Are you sure?',
                     text: message,
@@ -346,8 +347,8 @@
                     confirmButtonColor: '#ef4444', // Bootstrap danger
                     cancelButtonColor: '#6c757d', // Bootstrap secondary
                     confirmButtonText: 'Yes, delete it!',
-                    background: 'rgba(30, 30, 40, 0.95)',
-                    color: '#fff',
+                    background: isDark ? 'rgba(21, 18, 33, 0.98)' : '#ffffff',
+                    color: isDark ? '#ffffff' : '#1f2937',
                     backdrop: `rgba(0,0,0,0.4)`
                 }).then((result) => {
                     if (result.isConfirmed) {

@@ -8,10 +8,10 @@
 <style>
 /* External Guests Dropdown Enterprise UI Updates */
 .external-roles-dropdown-menu {
-    background-color: #FFFFFF !important;
-    border: 1px solid #D1D5DB !important;
+    background-color: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 10px !important;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: var(--shadow-lg) !important;
 }
 
 .external-role-item {
@@ -22,33 +22,33 @@
 }
 
 .external-role-item:hover {
-    background-color: #F3F4F6 !important;
+    background-color: var(--nav-hover-bg) !important;
 }
 
 .external-role-item.selected {
-    background-color: #ECFDF5 !important;
+    background-color: var(--active-nav-bg) !important;
 }
 
 .external-role-item .form-check-label {
-    color: #1F2937 !important;
+    color: var(--text-primary) !important;
     font-weight: 500;
     font-size: 0.9rem;
     cursor: pointer;
 }
 
 .external-role-item.selected .form-check-label {
-    color: #065F46 !important;
+    color: var(--primary) !important;
     font-weight: 600;
 }
 
 .external-roles-dropdown-menu .form-check-input {
-    border-color: #9CA3AF !important;
+    border-color: var(--border-color) !important;
     cursor: pointer;
 }
 
 .external-roles-dropdown-menu .form-check-input:checked {
-    background-color: #10B981 !important;
-    border-color: #10B981 !important;
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
 }
 </style>
 {% endblock %}
@@ -689,9 +689,9 @@
                 selected.forEach(cb => {
                     const chip = document.createElement('span');
                     chip.className = 'badge d-inline-flex align-items-center gap-1 text-white fw-medium px-2 py-1 me-1 mb-1';
-                    chip.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
-                    chip.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-                    chip.style.color = '#10B981';
+                    chip.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
+                    chip.style.border = '1px solid rgba(124, 58, 237, 0.3)';
+                    chip.style.color = 'var(--primary)';
                     chip.style.borderRadius = '6px';
                     chip.style.fontSize = '0.8rem';
                     

@@ -385,7 +385,7 @@ def delete_meeting_view(request, meeting_id):
     if request.user.role != 'ADMIN':
         from django.contrib import messages
         messages.error(request, "Only Admin users can delete meetings.")
-        return redirect('meetings')
+        return redirect(request.META.get('HTTP_REFERER', 'meetings'))
         
     from core.models import Meeting
     from django.contrib import messages
@@ -396,7 +396,7 @@ def delete_meeting_view(request, meeting_id):
     except Meeting.DoesNotExist:
         messages.error(request, "Meeting not found.")
         
-    return redirect('meetings')
+    return redirect(request.META.get('HTTP_REFERER', 'meetings'))
 
 @login_required
 def calendar_view(request):
@@ -1032,8 +1032,8 @@ def projects_view(request):
                 created_by=request.user
             )
             
-            # Find eligible employees (TL and EMPLOYEE)
-            eligible_users = CustomUser.objects.filter(id__in=assigned_user_ids, role__in=['EMPLOYEE', 'TL'])
+            # Find all eligible employees (TL and EMPLOYEE)
+            eligible_users = CustomUser.objects.filter(role__in=['EMPLOYEE', 'TL'])
             
             logs = []
             notifications = []
